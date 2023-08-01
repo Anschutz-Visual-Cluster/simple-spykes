@@ -46,8 +46,7 @@ def main():
             "drift_metrics_min_spikes_per_interval": 10,
             "include_pc_metrics": True
         },
-        save_to_file="quality_metrics.json",
-        calc_pcs=False
+        save_to_file="quality_metrics.json"
     )
 
     tw = 2

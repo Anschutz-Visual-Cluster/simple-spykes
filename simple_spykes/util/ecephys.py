@@ -1,16 +1,14 @@
 import json
-import tempfile
 import time
 import uuid
-
 import numpy as np
-import os
-from ecephys_spike_sorting.scripts.create_input_json import createInputJson
 from ecephys_spike_sorting.common.utils import load_kilosort_data
 from ecephys_spike_sorting.modules.quality_metrics.metrics import calculate_metrics
 
 
-def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_to_file=None, calc_pcs=True):
+def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_to_file=None):
+    calc_pcs = quality_metrics_params.get("include_pc_metrics", True)
+
     if save_to_file is None and not isinstance(save_to_file, str):
         raise ValueError("Error, when specifying 'save_to_file', value must be a string!")
 
@@ -61,4 +59,3 @@ def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_
         return json.loads(json_data)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"Cannot find file needed to run quality metrics! Error: {str(e)}")
-
