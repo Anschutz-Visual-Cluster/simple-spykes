@@ -1,1 +1,1 @@
-forked_ecephys_spike_sorting==0.1.0
+forked_ecephys_spike_sorting==0.1.1
