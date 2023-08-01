@@ -20,13 +20,16 @@ def generate_input_json():
 
     tmpfile = tempfile.NamedTemporaryFile(delete=False)
     json_data = createInputJson(tmpfile.name, extracted_data_directory="E:\\NeuroPixelsTest")
-    tw = 2
+    tmpfile.close()
+    os.remove(tmpfile.name)
+
     return json_data
     pass
 
 
 def main():
     config = generate_input_json()
+    tw = 2
 
 
 if __name__ == "__main__":
