@@ -16,6 +16,9 @@ def generate_input_json():
     #                 kilosort_output_directory=None,
     #                 kilosort_output_tmp=None,
     #                 probe_type='3A')
+    import tempfile
+    import os
+
     from ecephys_spike_sorting.scripts.create_input_json import createInputJson
 
     tmpfile = tempfile.NamedTemporaryFile(delete=False)
