@@ -43,8 +43,7 @@ def main():
             "n_neighbors": 4,
             'n_silhouette': 10000,
             "drift_metrics_interval_s": 51,
-            "drift_metrics_min_spikes_per_interval": 10,
-            "include_pc_metrics": True
+            "drift_metrics_min_spikes_per_interval": 10
         },
         save_to_file="quality_metrics.json"
     )

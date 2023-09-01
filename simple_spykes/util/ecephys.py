@@ -7,8 +7,6 @@ from ecephys_spike_sorting.modules.quality_metrics.metrics import calculate_metr
 
 
 def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_to_file=None):
-    calc_pcs = quality_metrics_params.get("include_pc_metrics", True)
-
     if save_to_file is None and not isinstance(save_to_file, str):
         raise ValueError("Error, when specifying 'save_to_file', value must be a string!")
 
@@ -21,16 +19,13 @@ def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_
             kilosort_output_directory,
             sample_rate,
             use_master_clock=False,
-            include_pcs=calc_pcs
+            include_pcs=False
         )
         print("Unpacking and starting calculations..")
 
-        if calc_pcs:
-            spike_times, spike_clusters, spike_templates, amplitudes, templates, channel_map, clusterIDs, cluster_quality, pc_features, pc_feature_ind = load_result
-        else:
-            pc_features = None
-            pc_feature_ind = None
-            spike_times, spike_clusters, spike_templates, amplitudes, templates, channel_map, clusterIDs, cluster_quality = load_result
+        pc_features = None
+        pc_feature_ind = None
+        spike_times, spike_clusters, spike_templates, amplitudes, templates, channel_map, clusterIDs, cluster_quality = load_result
 
         metrics = calculate_metrics(spike_times,
                                     spike_clusters,
