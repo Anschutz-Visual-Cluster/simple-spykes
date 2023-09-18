@@ -1,6 +1,8 @@
 import json
 import time
 import uuid
+import warnings
+
 import numpy as np
 from ecephys_spike_sorting.common.utils import load_kilosort_data
 from ecephys_spike_sorting.modules.quality_metrics.metrics import calculate_metrics
@@ -8,19 +10,11 @@ from ecephys_spike_sorting.modules.quality_metrics.metrics import calculate_metr
 
 def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_to_file=None):
     """
-
     Run EcePhys quality metrics
     Input for Metrics params looks like (example values below)
     {
             "isi_threshold": 0.0015,
-            "min_isi": 0.000166,
-            "num_channels_to_compare": 7,
-            "max_spikes_for_unit": 500,
-            "max_spikes_for_nn": 10000,
-            "n_neighbors": 4,
-            'n_silhouette': 10000,
-            "drift_metrics_interval_s": 51,
-            "drift_metrics_min_spikes_per_interval": 10
+            "min_isi": 0.000166
     }
 
     Output looks like:
@@ -41,12 +35,12 @@ def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_
     :param save_to_file: string to save to file, optional
     :return: json dict of the quality metrics values
     """
+    warnings.warn("The EcePhys package isn't well optimized, consider using another package.")
+
     if save_to_file is None and not isinstance(save_to_file, str):
         raise ValueError("Error, when specifying 'save_to_file', value must be a string!")
 
-    print('ecephys spike sorting: quality metrics module')
     start = time.time()
-
     print("Loading data...")
     try:
         load_result = load_kilosort_data(
@@ -70,8 +64,9 @@ def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_
                                     pc_feature_ind,
                                     quality_metrics_params)
 
-        print('total time: ' + str(np.around(time.time() - start, 2)) + ' seconds')
+        print('Total time: ' + str(np.around(time.time() - start, 2)) + ' seconds')
         json_data = metrics.to_json()
+
         if save_to_file:
             other_filename = f"quality_metrics_{str(uuid.uuid4())}"
             try:

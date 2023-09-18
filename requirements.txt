@@ -1,1 +1,2 @@
 forked_ecephys_spike_sorting==0.1.1
+spikeinterface[full] == 0.98.2
