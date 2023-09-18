@@ -7,6 +7,14 @@ import numpy as np
 from ecephys_spike_sorting.common.utils import load_kilosort_data
 from ecephys_spike_sorting.modules.quality_metrics.metrics import calculate_metrics
 
+"""
+Code Sourced from
+https://github.com/AllenInstitute/ecephys_spike_sorting/blob/master/ecephys_spike_sorting/scripts/batch_processing.py
+https://github.com/AllenInstitute/ecephys_spike_sorting/blob/master/ecephys_spike_sorting/modules/quality_metrics/__main__.py
+
+Adapted to fit needs
+"""
+
 
 def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_to_file=None):
     """

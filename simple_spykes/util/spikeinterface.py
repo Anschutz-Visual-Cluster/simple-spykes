@@ -1,10 +1,33 @@
+from pathlib import Path
+
 from spikeinterface.extractors import read_kilosort
 from spikeinterface.postprocessing import compute_principal_components
 from spikeinterface.qualitymetrics import compute_quality_metrics
+from spikeinterface.extractors import read_openephys
+import spikeinterface.full as si
 
 
-def quality_metrics(kilosort_directory):
-    waveform_extractor = read_kilosort(kilosort_directory)
+def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
+    # Format the name of the stream as NEO expects it
+    stream_name = f"{Path(folder_path).name}#{stream_name}"
+
+    recording_extractor = si.read_openephys(folder_path, stream_name=stream_name)
+
+    # TODO add probe location and map, see slack from Juan
+
+    sorting_extractor = read_kilosort(kilosort_output_directory)
+
+    extracted_waveforms = si.extract_waveforms(
+        recording_extractor,
+        sorting_extractor,
+        folder="TestWaveform",
+        max_spikes_per_unit=500,
+        overwrite=True,
+        n_jobs=8,
+        chunk_duration="1s"
+    )
+
+
     # https://github.com/SpikeInterface/spikeinterface/blob/3210f8eb960c404c91072596c39ef167af612353/src/spikeinterface/postprocessing/principal_component.py#L674
     # pca = compute_principal_components(waveform_extractor, n_components=5, mode='by_channel_local')
     """
@@ -46,7 +69,7 @@ def quality_metrics(kilosort_directory):
     """
 
     # https://github.com/SpikeInterface/spikeinterface/blob/3210f8eb960c404c91072596c39ef167af612353/src/spikeinterface/qualitymetrics/quality_metric_calculator.py#L176
-    metrics = compute_quality_metrics(waveform_extractor)
+    # metrics = compute_quality_metrics(waveform_extractor)
     """
     waveform_extractor,
     load_if_exists=False,
@@ -239,6 +262,10 @@ def quality_metrics(kilosort_directory):
         }
     }
 
-    
+    vals = compute_quality_metrics(
+        extracted_waveforms,
+        metric_names=["num_spikes"]
+    )
+    tw = 2
 
     pass
