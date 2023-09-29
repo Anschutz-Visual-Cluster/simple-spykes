@@ -5,6 +5,7 @@ from spikeinterface.postprocessing import compute_principal_components
 from spikeinterface.qualitymetrics import compute_quality_metrics
 from spikeinterface.extractors import read_openephys
 import spikeinterface.full as si
+from spikeinterface.preprocessing import bandpass_filter
 
 
 def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
@@ -12,10 +13,12 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
     stream_name = f"{Path(folder_path).name}#{stream_name}"
 
     recording_extractor = si.read_openephys(folder_path, stream_name=stream_name)
-
+    probe = recording_extractor.get_probe()
+    tw = 2
     # TODO add probe location and map, see slack from Juan
 
     sorting_extractor = read_kilosort(kilosort_output_directory)
+    recording_extractor = bandpass_filter(recording_extractor)
 
     extracted_waveforms = si.extract_waveforms(
         recording_extractor,
