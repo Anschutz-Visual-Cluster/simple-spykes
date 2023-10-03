@@ -1,5 +1,5 @@
 # from simple_spykes.util.ecephys import run_quality_metrics
-from simple_spykes.util.spikeinterface import run_quality_metrics
+from simple_spykes.util.spikeinterface_util import run_quality_metrics
 
 
 def main():

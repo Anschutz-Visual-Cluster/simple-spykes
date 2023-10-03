@@ -12,20 +12,22 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
     # Format the name of the stream as NEO expects it
     stream_name = f"{Path(folder_path).name}#{stream_name}"
 
+    print("Reading open ephys")
     recording_extractor = si.read_openephys(folder_path, stream_name=stream_name)
     probe = recording_extractor.get_probe()
     tw = 2
     # TODO add probe location and map, see slack from Juan
-
+    print("Reading kilosort")
     sorting_extractor = read_kilosort(kilosort_output_directory)
     recording_extractor = bandpass_filter(recording_extractor)
 
+    print("Extracting waveforms")
     extracted_waveforms = si.extract_waveforms(
         recording_extractor,
         sorting_extractor,
         folder="TestWaveform",
         max_spikes_per_unit=500,
-        overwrite=True,
+        overwrite=True,  # TODO Set this
         n_jobs=8,
         chunk_duration="1s"
     )
@@ -167,17 +169,16 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
 
     all_metrics = [
         # Non-PC Metrics
-        "num_spikes",
-        "firing_rate",
-        "presence_ratio",
-        "snr",
-        "isi_violation",
-        "rp_violation",
-        "sliding_rp_violation",
-        "amplitude_cutoff",
-        "amplitude_median",
-        "synchrony",
-        "drift",
+        # "num_spikes",
+        # "firing_rate",
+        # "presence_ratio",
+        # "snr",
+        # "isi_violation",
+        # "rp_violation",
+        # "sliding_rp_violation",
+        # "amplitude_cutoff",
+        # "amplitude_median",
+        # "drift",
 
         # PC Metrics
         "isolation_distance",
@@ -215,9 +216,6 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
             "exclude_ref_period_below_ms": 0.5,
             "max_ref_period_ms": 10,
             "contamination_values": None
-        },
-        "synchrony_metrics": {
-            "synchrony_sizes": (0, 2, 4)
         },
         "amplitude_cutoff": {
             "peak_sign": "neg",
@@ -265,10 +263,21 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
         }
     }
 
+    print("Computing PCs")
+    pca = compute_principal_components(waveform_extractor=extracted_waveforms, n_components=5, mode='by_channel_local')
+
+    print("Computing quality metrics")
     vals = compute_quality_metrics(
         extracted_waveforms,
-        metric_names=["num_spikes"]
+        metric_names=all_metrics,
+        qm_params=all_metric_params
     )
+
+    # TODO Compute "synchrony" metrics
+    # https://spikeinterface.readthedocs.io/en/latest/modules/qualitymetrics/synchrony.html
+    # "synchrony_metrics": {
+    #     "synchrony_sizes": (0, 2, 4)
+    # },
     tw = 2
 
     pass
