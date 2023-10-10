@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from spikeinterface.extractors import read_kilosort
@@ -14,7 +15,7 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
 
     print("Reading open ephys")
     recording_extractor = si.read_openephys(folder_path, stream_name=stream_name)
-    probe = recording_extractor.get_probe()
+    # probe = recording_extractor.get_probe()  # Automagically getting probe currently
     tw = 2
     # TODO add probe location and map, see slack from Juan
     print("Reading kilosort")
@@ -27,11 +28,22 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
         sorting_extractor,
         folder="TestWaveform",
         max_spikes_per_unit=500,
-        overwrite=True,  # TODO Set this
-        n_jobs=8,
-        chunk_duration="1s"
+        # overwrite=True,  # TODO Set this
+        n_jobs=-1,  # Use all CPUs
+        chunk_duration="1s",
+        load_if_exists=True  # TODO Set this
     )
 
+    available_extensions = extracted_waveforms.get_available_extension_names()
+    if "principal_components" in available_extensions:
+        print("PC extension exists, loading")
+        extracted_waveforms.load_extension("principal_components")
+    else:
+        print("Computing PCs, REALLY SLOW! 72+ hours possibly!")
+        compute_principal_components(waveform_extractor=extracted_waveforms, n_components=5,
+                                           mode='by_channel_local')
+
+    tw = 2
 
     # https://github.com/SpikeInterface/spikeinterface/blob/3210f8eb960c404c91072596c39ef167af612353/src/spikeinterface/postprocessing/principal_component.py#L674
     # pca = compute_principal_components(waveform_extractor, n_components=5, mode='by_channel_local')
@@ -167,27 +179,34 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
         If True, progress bar is shown.
     """
 
-    all_metrics = [
-        # Non-PC Metrics
-        # "num_spikes",
-        # "firing_rate",
-        # "presence_ratio",
-        # "snr",
-        # "isi_violation",
-        # "rp_violation",
-        # "sliding_rp_violation",
-        # "amplitude_cutoff",
-        # "amplitude_median",
-        # "drift",
-
+    pc_metrics = [
         # PC Metrics
-        "isolation_distance",
+
         "l_ratio",
         "d_prime",
         "nearest_neighbor",
         "nn_isolation",
         "nn_noise_overlap",
-        "silhouette"
+        "silhouette",
+        "isolation_distance",
+    ]
+
+    non_pc_metrics = [
+        # Non-PC Metrics
+        "num_spikes",
+        "firing_rate",
+        "presence_ratio",
+        "snr",
+        "isi_violation",
+        "rp_violation",
+        "sliding_rp_violation",
+        "amplitude_cutoff",
+        "amplitude_median",
+        "drift"
+    ]
+    all_metrics = [
+        *non_pc_metrics,
+        *pc_metrics
     ]
 
     all_metric_params = {
@@ -263,15 +282,31 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
         }
     }
 
-    print("Computing PCs")
-    pca = compute_principal_components(waveform_extractor=extracted_waveforms, n_components=5, mode='by_channel_local')
+    num_units = len(extracted_waveforms.unit_ids)
+    units_per_iteration = 20
+    groups = num_units // units_per_iteration
+    extra = num_units % units_per_iteration
+    group_sizes = list(range(0, num_units, units_per_iteration))
+    if extra != 0:
+        group_sizes.append(num_units)
+    # unit_groups = [list(range(group_sizes[i-1], group_sizes[i])) for i in range(1, len(group_sizes))]
+    unit_groups = [list(range(0, num_units))]
+    tw = 2
 
-    print("Computing quality metrics")
-    vals = compute_quality_metrics(
-        extracted_waveforms,
-        metric_names=all_metrics,
-        qm_params=all_metric_params
-    )
+    print("Computing different quality metrics")
+    for metric in pc_metrics:
+        print(f"Working on metric '{metric}'")
+        start = time.time()
+        for unit_group in unit_groups:
+            print(f"Working on unit group {unit_group[0]}-{unit_group[-1]}")
+            vals = compute_quality_metrics(
+                extracted_waveforms,
+                metric_names=[metric],  # TODO change metric
+                qm_params=all_metric_params,
+                # unit_ids=unit_group,  # TODO Remove, keyword doesn't exist
+                n_jobs=-1  # use all CPUs
+            )
+        print(f"Finished '{metric}' in {time.time() - start}")
 
     # TODO Compute "synchrony" metrics
     # https://spikeinterface.readthedocs.io/en/latest/modules/qualitymetrics/synchrony.html
