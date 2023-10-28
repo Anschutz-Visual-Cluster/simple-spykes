@@ -1,12 +1,21 @@
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+import sklearn.preprocessing
 from scipy.interpolate import UnivariateSpline
 
 
-def _load_file(metrics_file: str) -> dict:
+def _load_file(metrics_file: str, exclude: list[str], normalize:bool = False) -> dict:
     with open(metrics_file, "r") as f:
         data = json.load(f)
+    [data.pop(ex, None) for ex in exclude]
+
+    if normalize:
+        d2 = {}
+        for k, v in data.items():
+            d2[k] = {c: sklearn.preprocessing.normalize([list(v.values())]) for c in range(len(v.keys()))}
+            tw = 2
+        data = d2
     return data
 
 
@@ -94,7 +103,36 @@ def graph_spikeinterface_quality_metrics_correlations(metrics_file: str):
     :param metrics_file: string filename to read from
     :return:
     """
+    all_data = _load_file(metrics_file, exclude=["epoch_name"], normalize=False)
+    qm_count = len(list(all_data.keys()))
+    _, axes = plt.subplots(
+        nrows=qm_count,
+        ncols=qm_count,
+        sharex=True,
+        sharey=True,
+        layout="constrained"
+    )
 
+    def plot_subplot(x_idx, y_idx):
+        subplot = axes[x_idx, y_idx]
+        subplot_x = all_data[list(all_data.keys())[x_idx]]
+        subplot_x = list(subplot_x.values())
+
+        subplot_y = all_data[list(all_data.keys())[y_idx]]
+        subplot_y = list(subplot_y.values())
+
+        subplot.scatter(
+            x=subplot_x,
+            y=subplot_y,
+            marker=","
+        )
+        pass
+
+    for row in range(qm_count):
+        for col in range(qm_count):
+            plot_subplot(row, col)
+    plt.show()
+    tw = 2
     pass
 
 
