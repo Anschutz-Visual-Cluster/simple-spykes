@@ -1,14 +1,27 @@
 import json
+import os
+from typing import Optional, Union
+
 import matplotlib.pyplot as plt
+import matplotlib.scale
 import numpy as np
 import sklearn.preprocessing
 from scipy.interpolate import UnivariateSpline
 
 
-def _load_file(metrics_file: str, exclude: list[str], normalize:bool = False) -> dict:
-    with open(metrics_file, "r") as f:
-        data = json.load(f)
-    [data.pop(ex, None) for ex in exclude]
+def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] = None, normalize:bool = False) -> dict:
+    if exclude is None:
+        exclude = ["epoch_name"]
+
+    if not isinstance(metrics_file, list):
+        metrics_file = [metrics_file]
+
+    data = {}
+    for filename in metrics_file:
+        with open(filename, "r") as f:
+            loaddata = json.load(f)
+        [loaddata.pop(ex, None) for ex in exclude]
+        data.update(loaddata)
 
     if normalize:
         d2 = {}
@@ -19,11 +32,12 @@ def _load_file(metrics_file: str, exclude: list[str], normalize:bool = False) ->
     return data
 
 
-def graph_spikeinterface_quality_metrics_unit_graphs(metrics_file: str):
+def graph_spikeinterface_quality_metrics_unit_graphs(metrics_file: str, save: Union[bool, str] = False):
     """
     Shows all the graphs for Unit vs the corresponding quality metric value
 
     :param metrics_file: string filename of the QM output
+    :param save: If set, will save the graph in the folder of the string value given, else False will only show plots
     :return:
     """
     data = _load_file(metrics_file)
@@ -36,17 +50,22 @@ def graph_spikeinterface_quality_metrics_unit_graphs(metrics_file: str):
 
         plt.bar(x_vals, y_vals)
         plt.title(qm_name)
-        plt.show()
+        if save:
+            plt.savefig(f"{save}{qm_name}-unit.png")
+            plt.clf()
+        else:
+            plt.show()
 
 
-def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str):
+def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str, save: Union[bool, str] = False):
     """
     Probability distributions of each metric across the units
 
     :param metrics_file: string filename to read from
+    :param save: If set, will save the graph in the folder of the string value given, else False will only show plots
     :return:
     """
-    all_data = _load_file(metrics_file)
+    all_data = _load_file(metrics_file, exclude=["epoch_name", "cluster_id"])
 
     def graph_qm(qm_name: str, qm_data: dict):
         if qm_name in ["epoch_name"]:  # Can't graph these metrics here
@@ -60,9 +79,19 @@ def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str):
         if len(qm_values) == 0:
             print(f"Can't graph prob dist of metric '{qm_name}' all vals are None")
             return  # Can't graph this metric
+
+        # manual_bins = np.arange(0, len(qm_values))
+        # bins = 1
+
         bins = len(qm_values)//10
 
+
+        # smallest_step = np.abs(np.diff(qm_values)[np.diff(qm_values) != 0]).min()
+        # manual_bins = np.arange(qm_values.min(), qm_values.max())
+
+
         hist, bin_edges = np.histogram(qm_values, bins=bins, density=True)
+        # hist, bin_edges = np.histogram(qm_values, bins=manual_bins, density=True)
         bin_edge_half_size = (bin_edges[1] - bin_edges[0]) / 2
         bin_centers = bin_edges[:-1] + bin_edge_half_size  # Offset edges by half to center values
 
@@ -87,8 +116,14 @@ def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str):
             label="Spline approx"
         )
         plt.title(f"{qm_name} Probability Density Histogram")
+        plt.xlabel(f"{qm_name} value (binned)")
+        plt.ylabel("Probability")
         plt.legend()
-        plt.show()
+        if save:
+            plt.savefig(f"{save}{qm_name}-prob.png")
+            plt.clf()
+        else:
+            plt.show()
         tw = 2
         pass
 
@@ -96,14 +131,14 @@ def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str):
         graph_qm(k, v)
 
 
-def graph_spikeinterface_quality_metrics_correlations(metrics_file: str):
+def graph_spikeinterface_quality_metrics_correlations(metrics_file: Union[str, list[str]]):
     """
     Plot each metric value against each other to determine how they correlate
 
     :param metrics_file: string filename to read from
     :return:
     """
-    all_data = _load_file(metrics_file, exclude=["epoch_name"], normalize=False)
+    all_data = _load_file(metrics_file, normalize=False)
     qm_count = len(list(all_data.keys()))
     _, axes = plt.subplots(
         nrows=qm_count,
@@ -130,21 +165,27 @@ def graph_spikeinterface_quality_metrics_correlations(metrics_file: str):
 
     for row in range(qm_count):
         for col in range(qm_count):
-            plot_subplot(row, col)
+            plot_subplot(col, row)
     plt.show()
     tw = 2
     pass
 
 
-def graph_spikeinterface_quality_metrics(metrics_file: str):
+def graph_spikeinterface_quality_metrics(metrics_file: Union[str, list[str]], save: Union[bool, str] = False):
+    if save:
+        if not isinstance(save, str):
+            raise ValueError("'save' parameter must be a string if set!")
+        if not os.path.exists(save):
+            os.mkdir(save)
+
     # Unit vs qm value
-    # graph_spikeinterface_quality_metrics_unit_graphs(metrics_file)
+    graph_spikeinterface_quality_metrics_unit_graphs(metrics_file, save=save)
 
     # Probability distribution of the quality metrics values across all units
-    # graph_spikeinterface_quality_metrics_prob_dists(metrics_file)
+    # graph_spikeinterface_quality_metrics_prob_dists(metrics_file, save=save)
 
     # All quality metrics plotted against another to determine correlations
-    graph_spikeinterface_quality_metrics_correlations(metrics_file)
+    # graph_spikeinterface_quality_metrics_correlations(metrics_file)
 
 
     tw = 2

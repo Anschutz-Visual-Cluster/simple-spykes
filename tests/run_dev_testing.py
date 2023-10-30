@@ -11,8 +11,15 @@ def main():
     #     kilosort_output_directory="../data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP"
     # )
 
-    # graph_spikeinterface_quality_metrics("pc_quality_metrics.json")
-    graph_spikeinterface_quality_metrics("quality_metrics.json")
+    # metrics_file = "quality_metrics.json"
+    # metrics_file = "pc_quality_metrics.json"
+    metrics_file = ["quality_metrics.json", "pc_quality_metrics.json"]
+
+    # save = "graphs/"
+    save = False
+
+    graph_spikeinterface_quality_metrics(metrics_file, save=save)
+
     tw = 2
 
 
