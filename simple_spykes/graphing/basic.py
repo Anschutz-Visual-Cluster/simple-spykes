@@ -23,12 +23,23 @@ def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]]
         [loaddata.pop(ex, None) for ex in exclude]
         data.update(loaddata)
 
-    if normalize:
-        d2 = {}
-        for k, v in data.items():
-            d2[k] = {c: sklearn.preprocessing.normalize([list(v.values())]) for c in range(len(v.keys()))}
-            tw = 2
-        data = d2
+    # Normalize broken rn
+    # if normalize:
+    #     d2 = {}
+    #     for k, v in data.items():
+    #         d2[k] = {c: sklearn.preprocessing.normalize([list(v.values())]) for c in range(len(v.keys()))}
+    #         tw = 2
+    #     data = d2
+    #
+    val_len = None
+    key_used_for_len = None
+    for k, v in data.items():
+        if val_len is None:
+            val_len = len(v)
+            key_used_for_len = k
+        if len(v) != val_len:
+            raise ValueError(f"Error, length of QM '{k}' isn't the same size as '{key_used_for_len}'")
+
     return data
 
 
@@ -138,34 +149,43 @@ def graph_spikeinterface_quality_metrics_correlations(metrics_file: Union[str, l
     :param metrics_file: string filename to read from
     :return:
     """
-    all_data = _load_file(metrics_file, normalize=False)
+    all_data = _load_file(metrics_file) #, normalize=True)
+
     qm_count = len(list(all_data.keys()))
     _, axes = plt.subplots(
         nrows=qm_count,
         ncols=qm_count,
-        sharex=True,
-        sharey=True,
+        sharex="all",
+        sharey="all",
         layout="constrained"
     )
 
     def plot_subplot(x_idx, y_idx):
-        subplot = axes[x_idx, y_idx]
-        subplot_x = all_data[list(all_data.keys())[x_idx]]
-        subplot_x = list(subplot_x.values())
+        subplot = axes[y_idx, x_idx]  # Flip plot index to align axes
 
-        subplot_y = all_data[list(all_data.keys())[y_idx]]
-        subplot_y = list(subplot_y.values())
+        keylist = list(all_data.keys())
+
+        x_qm_name = keylist[x_idx]
+        x_data = all_data[x_qm_name]
+        subplot_x = [v for v in range(len(x_data.values()))]
+
+        y_qm_name = keylist[y_idx]
+        y_data = all_data[keylist[y_idx]]
+        subplot_y = list(y_data.values())
 
         subplot.scatter(
             x=subplot_x,
             y=subplot_y,
             marker=","
         )
+        if x_idx == 0 or y_idx == 0:
+            subplot.set_title(x_qm_name)
+            subplot.set_title(y_qm_name)
         pass
 
     for row in range(qm_count):
         for col in range(qm_count):
-            plot_subplot(col, row)
+            plot_subplot(row, col)
     plt.show()
     tw = 2
     pass
@@ -179,13 +199,12 @@ def graph_spikeinterface_quality_metrics(metrics_file: Union[str, list[str]], sa
             os.mkdir(save)
 
     # Unit vs qm value
-    graph_spikeinterface_quality_metrics_unit_graphs(metrics_file, save=save)
+    # graph_spikeinterface_quality_metrics_unit_graphs(metrics_file, save=save)
 
     # Probability distribution of the quality metrics values across all units
     # graph_spikeinterface_quality_metrics_prob_dists(metrics_file, save=save)
 
     # All quality metrics plotted against another to determine correlations
-    # graph_spikeinterface_quality_metrics_correlations(metrics_file)
-
+    graph_spikeinterface_quality_metrics_correlations(metrics_file)
 
     tw = 2

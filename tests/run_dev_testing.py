@@ -11,9 +11,9 @@ def main():
     #     kilosort_output_directory="../data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP"
     # )
 
-    # metrics_file = "quality_metrics.json"
+    metrics_file = "quality_metrics.json"
     # metrics_file = "pc_quality_metrics.json"
-    metrics_file = ["quality_metrics.json", "pc_quality_metrics.json"]
+    # metrics_file = ["quality_metrics.json", "pc_quality_metrics.json"]
 
     # save = "graphs/"
     save = False
