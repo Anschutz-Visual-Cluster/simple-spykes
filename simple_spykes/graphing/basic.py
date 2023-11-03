@@ -9,9 +9,9 @@ import sklearn.preprocessing
 from scipy.interpolate import UnivariateSpline
 
 
-def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] = None, normalize:bool = False) -> dict:
+def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] = None, normalize:bool = False, use_common_units: bool = False) -> dict:
     if exclude is None:
-        exclude = ["epoch_name"]
+        exclude = ["epoch_name", "cluster_id"]
 
     if not isinstance(metrics_file, list):
         metrics_file = [metrics_file]
@@ -40,7 +40,33 @@ def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]]
         if len(v) != val_len:
             raise ValueError(f"Error, length of QM '{k}' isn't the same size as '{key_used_for_len}'")
 
-    return data
+    new_data = {}
+
+    # Ensure common units align with each other
+
+    all_set = None
+    all_set_keyname = None
+    for k, v in data.items():  # Keeping separate from above for loop so it can be easily commented out
+        if all_set is None:
+            all_set = set([int(s) for s in v.keys()])
+            all_set_keyname = k
+        cur_set = set([int(s) for s in v.keys()])
+        if cur_set != all_set and not use_common_units:
+            raise ValueError(f"Metrics do not have the same units! '{all_set_keyname}' and '{k}' To ignore set use_common_units=True")
+        if use_common_units:
+            all_set = all_set.intersection(cur_set)
+
+    ordered_units = sorted(list(all_set))
+    new_data = {}
+    keylist = list(data.keys())
+
+    for key in keylist:
+        new_data[key] = []
+        for unit in ordered_units:
+            new_data[key].append(data[key][str(unit)])
+    tw = 2
+
+    return new_data
 
 
 def graph_spikeinterface_quality_metrics_unit_graphs(metrics_file: str, save: Union[bool, str] = False):
@@ -152,41 +178,49 @@ def graph_spikeinterface_quality_metrics_correlations(metrics_file: Union[str, l
     all_data = _load_file(metrics_file) #, normalize=True)
 
     qm_count = len(list(all_data.keys()))
-    _, axes = plt.subplots(
-        nrows=qm_count,
-        ncols=qm_count,
-        sharex="all",
-        sharey="all",
-        layout="constrained"
-    )
 
-    def plot_subplot(x_idx, y_idx):
-        subplot = axes[y_idx, x_idx]  # Flip plot index to align axes
+    def plot_subplot(ax, x_idx, y_idx):
+        subplot = ax[y_idx, x_idx]  # Flip plot index to align axes
 
         keylist = list(all_data.keys())
 
         x_qm_name = keylist[x_idx]
         x_data = all_data[x_qm_name]
-        subplot_x = [v for v in range(len(x_data.values()))]
 
         y_qm_name = keylist[y_idx]
-        y_data = all_data[keylist[y_idx]]
-        subplot_y = list(y_data.values())
+        y_data = all_data[y_qm_name]
 
         subplot.scatter(
-            x=subplot_x,
-            y=subplot_y,
+            x=x_data,
+            y=y_data,
             marker=","
         )
-        if x_idx == 0 or y_idx == 0:
-            subplot.set_title(x_qm_name)
-            subplot.set_title(y_qm_name)
-        pass
+        if x_idx == 0:
+            subplot.set(ylabel=y_qm_name)
+        if y_idx == len(keylist)-1:
+            subplot.set(xlabel=x_qm_name)
 
+        print(f"Plotting {x_qm_name}({min(x_data)}, {max(x_data)}) vs {y_qm_name}({min(y_data)}, {max(y_data)})")
+
+        # subplot.set_xlim(0, max(x_data))
+        # subplot.set_ylim(0, max(y_data))
+
+    progress = []
     for row in range(qm_count):
         for col in range(qm_count):
-            plot_subplot(row, col)
-    plt.show()
+            progress.append((row, col))
+            _, axes = plt.subplots(
+                nrows=qm_count,
+                ncols=qm_count,
+                s=10
+                # sharex="all",
+                # sharey="all",
+                # layout="constrained"
+            )
+            [plot_subplot(axes, *v) for v in progress]
+            plt.show()
+            plt.close()
+            tw = 2
     tw = 2
     pass
 
