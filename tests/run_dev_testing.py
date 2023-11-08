@@ -1,6 +1,8 @@
 # from simple_spykes.util.ecephys import run_quality_metrics
 from simple_spykes.util.spikeinterface_util import run_quality_metrics
-from simple_spykes.graphing.basic import graph_spikeinterface_quality_metrics
+from simple_spykes.graphing.basic import graph_spikeinterface_quality_metrics, \
+    graph_spikeinterface_quality_metrics_correlations
+
 
 def main():
     # Yoinked from \\10.33.107.246\s2\stim\recordings\jlh34_2023-05-15_16-03-21\Record Node 105\experiment1\recording1\continuous\Neuropix-PXI-104.ProbeA-AP
@@ -11,14 +13,25 @@ def main():
     #     kilosort_output_directory="../data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP"
     # )
 
-    metrics_file = "quality_metrics.json"
-    # metrics_file = "pc_quality_metrics.json"
-    # metrics_file = ["quality_metrics.json", "pc_quality_metrics.json"]
+    regular_metrics = "quality_metrics.json"
+    pc_metrics = "pc_quality_metrics.json"
 
-    # save = "graphs/"
-    save = False
+    all_metrics = ["quality_metrics.json", "pc_quality_metrics.json"]
 
-    graph_spikeinterface_quality_metrics(metrics_file, save=save)
+    # metrics_file = regular_metrics
+    # metrics_file = pc_metrics
+    metrics_file = all_metrics
+
+    save = "graphs/"
+    # save = False
+
+    # use_common_units = True
+
+    # graph_spikeinterface_quality_metrics(metrics_file, save=save, use_common_units=True)
+
+    graph_spikeinterface_quality_metrics(regular_metrics, save_folder="graphs/")
+    graph_spikeinterface_quality_metrics(pc_metrics, save_folder="graphs/", save_prefix="pc-")
+    graph_spikeinterface_quality_metrics_correlations(metrics_file, save_folder="graphs/", save_prefix="all-", use_common_units=True)
 
     tw = 2
 
