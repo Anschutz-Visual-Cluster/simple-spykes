@@ -18,17 +18,13 @@ def main():
 
     all_metrics = ["quality_metrics.json", "pc_quality_metrics.json"]
 
-    # metrics_file = regular_metrics
+    metrics_file = regular_metrics
     # metrics_file = pc_metrics
-    metrics_file = all_metrics
-
-    save = "graphs/"
-    # save = False
+    # metrics_file = all_metrics
 
     # use_common_units = True
 
-    # graph_spikeinterface_quality_metrics(metrics_file, save=save, use_common_units=True)
-
+    # graph_spikeinterface_quality_metrics(metrics_file, use_common_units=True)
     graph_spikeinterface_quality_metrics(regular_metrics, save_folder="graphs/")
     graph_spikeinterface_quality_metrics(pc_metrics, save_folder="graphs/", save_prefix="pc-")
     graph_spikeinterface_quality_metrics_correlations(metrics_file, save_folder="graphs/", save_prefix="all-", use_common_units=True)

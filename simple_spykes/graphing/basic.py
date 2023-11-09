@@ -106,10 +106,9 @@ def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str, save_fold
     """
     all_data = _load_file(metrics_file, exclude=["epoch_name", "cluster_id"], use_common_units=use_common_units)
 
-    def graph_qm(qm_name: str, qm_data: dict):
+    def graph_qm(qm_name: str, qm_data: list[float]):
         if qm_name in ["epoch_name"]:  # Can't graph these metrics here
             return
-
         # TODO remove or set to 0 none vals?
         # qm_values = np.array([v or 0 for v in list(qm_data.values())])
         qm_values = np.array(qm_data)
@@ -119,50 +118,100 @@ def graph_spikeinterface_quality_metrics_prob_dists(metrics_file: str, save_fold
             print(f"Can't graph prob dist of metric '{qm_name}' all vals are None")
             return  # Can't graph this metric
 
-        # manual_bins = np.arange(0, len(qm_values))
-        # bins = 1
+        # bin_size = np.mean(qm_values) / 2
+        bin_size = (3.49 * np.std(qm_values) * np.power(len(qm_values), -1/3))/2
+        bin_edges = [bin_size*c for c in range(round(np.max(qm_values)/bin_size))]
+        bin_edges = np.array(bin_edges)
+        bin_counts = {b: 0 for b in bin_edges}
+        for el in qm_values:
+            fit = bin_edges[bin_edges-bin_size<el]
+            if len(fit) == 0:  # If value is below zero, include in first bin TODO Fix?
+                bin_counts[0.0] = bin_counts[0.0] + 1
+            else:
+                bin_counts[fit[-1]] = bin_counts[fit[-1]] + 1
+            tw = 2
 
-        bins = len(qm_values)//10
-
-        # smallest_step = np.abs(np.diff(qm_values)[np.diff(qm_values) != 0]).min()
-        # manual_bins = np.arange(qm_values.min(), qm_values.max())
-
-        hist, bin_edges = np.histogram(qm_values, bins=bins, density=True)
-        # hist, bin_edges = np.histogram(qm_values, bins=manual_bins, density=True)
-        bin_edge_half_size = (bin_edges[1] - bin_edges[0]) / 2
-        bin_centers = bin_edges[:-1] + bin_edge_half_size  # Offset edges by half to center values
-
-        # Graph histogram of values
+        bin_counts = np.array(list(bin_counts.values()))
+        total = np.sum(bin_counts)
+        percentage_weights = bin_counts/total
         plt.bar(
-            [c for c in range(len(hist))],
-            hist,
-            label=f"QM Value with bin size {bins}"
+            bin_edges,
+            percentage_weights,
+            width=bin_size/2,
+            label=f"QM Value with {len(bin_counts)} bins"
         )
+
         # Fit a spline to the histogram
         spline_func = UnivariateSpline(
-            bin_centers,  # x vals
-            hist,  # y vals
-            s=bins  # smoothing factor
+            bin_edges - bin_size/2,  # x vals
+            percentage_weights,  # y vals
+            s=len(bin_counts)  # smoothing factor
         )
         # Plot spline
         plt.plot(
-            [c for c in range(len(bin_centers))],
-            spline_func(bin_centers),
+            bin_edges - bin_size/2,
+            spline_func(bin_edges - bin_size/2),
             color="red",
             linewidth=2,
             label="Spline approx"
         )
+
         plt.title(f"{qm_name} Probability Density Histogram")
-        plt.xlabel(f"{qm_name} value (binned)")
-        plt.ylabel("Probability")
+        plt.xlabel(f"{qm_name} value (binned by {bin_size})")
+        plt.ylabel("Probability ")
         plt.legend()
         if save_folder:
             plt.savefig(f"{save_folder}/{save_prefix}prob-{qm_name}.png")
             plt.clf()
         else:
             plt.show()
+
         tw = 2
-        pass
+
+    #     # manual_bins = np.arange(0, len(qm_values))
+    #     # bins = 1
+    #
+    #     bins = len(qm_values)//10
+    #
+    #     # smallest_step = np.abs(np.diff(qm_values)[np.diff(qm_values) != 0]).min()
+    #     # manual_bins = np.arange(qm_values.min(), qm_values.max())
+    #
+    #     hist, bin_edges = np.histogram(qm_values, bins=bins, density=True)
+    #     # hist, bin_edges = np.histogram(qm_values, bins=manual_bins, density=True)
+    #     bin_edge_half_size = (bin_edges[1] - bin_edges[0]) / 2
+    #     bin_centers = bin_edges[:-1] + bin_edge_half_size  # Offset edges by half to center values
+    #
+    #     # Graph histogram of values
+    #     plt.bar(
+    #         [c for c in range(len(hist))],
+    #         hist,
+    #         label=f"QM Value with bin size {bins}"
+    #     )
+    #     # Fit a spline to the histogram
+    #     spline_func = UnivariateSpline(
+    #         bin_centers,  # x vals
+    #         hist,  # y vals
+    #         s=bins  # smoothing factor
+    #     )
+    #     # Plot spline
+    #     plt.plot(
+    #         [c for c in range(len(bin_centers))],
+    #         spline_func(bin_centers),
+    #         color="red",
+    #         linewidth=2,
+    #         label="Spline approx"
+    #     )
+    #     plt.title(f"{qm_name} Probability Density Histogram")
+    #     plt.xlabel(f"{qm_name} value (binned)")
+    #     plt.ylabel("Probability")
+    #     plt.legend()
+    #     if save_folder:
+    #         plt.savefig(f"{save_folder}/{save_prefix}prob-{qm_name}.png")
+    #         plt.clf()
+    #     else:
+    #         plt.show()
+    #     tw = 2
+    #     pass
 
     for k, v in all_data.items():
         graph_qm(k, v)
