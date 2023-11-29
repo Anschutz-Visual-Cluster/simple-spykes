@@ -3,6 +3,7 @@ from simple_spykes.util.spikeinterface_util import run_quality_metrics
 from simple_spykes.graphing.basic import graph_spikeinterface_quality_metrics, \
     graph_spikeinterface_quality_metrics_correlations
 
+
 def graphing():
     regular_metrics = "quality_metrics.json"
     pc_metrics = "pc_quality_metrics.json"
@@ -23,7 +24,7 @@ def graphing():
     tw = 2
 
 
-def main():
+def spikeinterface():
     # Data from \\10.33.107.246\s2\stim\recordings\jlh34_2023-05-15_16-03-21\Record Node 105\experiment1\recording1\continuous\Neuropix-PXI-104.ProbeA-AP
 
     r = run_quality_metrics(
@@ -31,6 +32,11 @@ def main():
         stream_name="Neuropix-PXI-104.ProbeA-AP",
         kilosort_output_directory="../data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP"
     )
+
+
+def main():
+
+   tw = 2
 
 
 if __name__ == "__main__":
