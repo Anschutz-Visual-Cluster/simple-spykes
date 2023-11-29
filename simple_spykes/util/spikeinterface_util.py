@@ -40,8 +40,11 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
         extracted_waveforms.load_extension("principal_components")
     else:
         print("Computing PCs, REALLY SLOW! 72+ hours possibly!")
-        compute_principal_components(waveform_extractor=extracted_waveforms, n_components=5,
-                                           mode='by_channel_local')
+        compute_principal_components(
+            waveform_extractor=extracted_waveforms,
+            n_components=5,
+            mode='by_channel_local'
+        )
 
     tw = 2
 
@@ -293,20 +296,27 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
     unit_groups = [list(range(0, num_units))]
     tw = 2
 
-    print("Computing different quality metrics")
-    for metric in pc_metrics:
-        print(f"Working on metric '{metric}'")
-        start = time.time()
-        for unit_group in unit_groups:
-            print(f"Working on unit group {unit_group[0]}-{unit_group[-1]}")
-            vals = compute_quality_metrics(
-                extracted_waveforms,
-                metric_names=[metric],  # TODO change metric
-                qm_params=all_metric_params,
-                # unit_ids=unit_group,  # TODO Remove, keyword doesn't exist
-                n_jobs=-1  # use all CPUs
-            )
-        print(f"Finished '{metric}' in {time.time() - start}")
+    vals = compute_quality_metrics(
+        extracted_waveforms,
+        metric_names=[all_metrics],
+        qm_params=all_metric_params,
+        n_jobs=-1  # use all CPUs
+    )
+    tw = 2
+
+    # print("Computing different quality metrics")
+    # for metric in pc_metrics:
+    #     print(f"Working on metric '{metric}'")
+    #     start = time.time()
+    #     for unit_group in unit_groups:
+    #         print(f"Working on unit group {unit_group[0]}-{unit_group[-1]}")
+    #         vals = compute_quality_metrics(
+    #             extracted_waveforms,
+    #             metric_names=[metric],  # TODO change metric
+    #             qm_params=all_metric_params,
+    #             n_jobs=-1  # use all CPUs
+    #         )
+    #     print(f"Finished '{metric}' in {time.time() - start}")
 
     # TODO Compute "synchrony" metrics
     # https://spikeinterface.readthedocs.io/en/latest/modules/qualitymetrics/synchrony.html
