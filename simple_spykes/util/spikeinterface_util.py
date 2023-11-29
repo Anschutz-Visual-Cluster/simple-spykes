@@ -2,22 +2,20 @@ import time
 from pathlib import Path
 
 from spikeinterface.extractors import read_kilosort
-from spikeinterface.postprocessing import compute_principal_components
+from spikeinterface.postprocessing import compute_principal_components, compute_spike_locations
 from spikeinterface.qualitymetrics import compute_quality_metrics
 from spikeinterface.extractors import read_openephys
 import spikeinterface.full as si
 from spikeinterface.preprocessing import bandpass_filter
 
 
-def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
+def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, overwrite_waveform=False):
     # Format the name of the stream as NEO expects it
     stream_name = f"{Path(folder_path).name}#{stream_name}"
 
     print("Reading open ephys")
     recording_extractor = si.read_openephys(folder_path, stream_name=stream_name)
-    # probe = recording_extractor.get_probe()  # Automagically getting probe currently
-    tw = 2
-    # TODO add probe location and map, see slack from Juan
+
     print("Reading kilosort")
     sorting_extractor = read_kilosort(kilosort_output_directory)
     recording_extractor = bandpass_filter(recording_extractor)
@@ -26,25 +24,50 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
     extracted_waveforms = si.extract_waveforms(
         recording_extractor,
         sorting_extractor,
-        folder="TestWaveform",
-        max_spikes_per_unit=500,
-        # overwrite=True,  # TODO Set this
+        folder="QualityMetricsWaveforms",
+        max_spikes_per_unit=None,  # Extract all spikes
+        overwrite=overwrite_waveform,
         n_jobs=-1,  # Use all CPUs
         chunk_duration="1s",
-        load_if_exists=True  # TODO Set this
+        progress_bar=True,
+        verbose=True,
+        load_if_exists=not overwrite_waveform
     )
 
+    extensions_to_load = {
+        "principal_components": [compute_principal_components, {
+            "waveform_extractor": extracted_waveforms,  # Waveform extractor object above
+            "n_components": 5,  # Number of components of PCA
+            "n_jobs": -1,  # Number of jobs to fit, -1 uses all CPUs
+            # mode: 'by_channel_local' a local PCA is fitted for each channel (projection by channel)
+            # mode: 'by_channel_global' a global PCA is fitted for all channels (projection by channel)
+            # mode: 'concatenated' channels are concatenated and a global PCA is fitted
+            "mode": "by_channel_local",
+            "load_if_exists": True,  # Load if exists
+            "progress_bar": True,
+            "verbose": True
+        }],
+        "spike_locations": [compute_spike_locations, {
+            "waveform_extractor": extracted_waveforms,
+            "load_if_exists": True,
+            "ms_before": 0.5,  # The left window before a peak in ms
+            "ms_after": 0.5,  # The right window after a peak in ms
+            "method": "center_of_mass",  # "center_of_mass" | "monopolar_triangulation" | "grid_convolution"
+            "progress_bar": True,
+            "n_jobs": -1,
+            "verbose": True
+        }]
+    }
+
     available_extensions = extracted_waveforms.get_available_extension_names()
-    if "principal_components" in available_extensions:
-        print("PC extension exists, loading")
-        extracted_waveforms.load_extension("principal_components")
-    else:
-        print("Computing PCs, REALLY SLOW! 72+ hours possibly!")
-        compute_principal_components(
-            waveform_extractor=extracted_waveforms,
-            n_components=5,
-            mode='by_channel_local'
-        )
+    for extension_name, extension_data in extensions_to_load.items():
+        if extension_name in available_extensions:
+            print(f"Extension '{extension_name}' exists, loading..")
+            extracted_waveforms.load_extension(extension_name)
+        else:
+            # Run the extension generating func with the args, see above dict
+            print(f"Need to compute for extension '{extension_name}'..")
+            extension_data[0](**extension_data[1])
 
     tw = 2
 
@@ -285,22 +308,27 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory):
         }
     }
 
-    num_units = len(extracted_waveforms.unit_ids)
-    units_per_iteration = 20
-    groups = num_units // units_per_iteration
-    extra = num_units % units_per_iteration
-    group_sizes = list(range(0, num_units, units_per_iteration))
-    if extra != 0:
-        group_sizes.append(num_units)
-    # unit_groups = [list(range(group_sizes[i-1], group_sizes[i])) for i in range(1, len(group_sizes))]
-    unit_groups = [list(range(0, num_units))]
+    # num_units = len(extracted_waveforms.unit_ids)
+    # units_per_iteration = 20
+    # groups = num_units // units_per_iteration
+    # extra = num_units % units_per_iteration
+    # group_sizes = list(range(0, num_units, units_per_iteration))
+    # if extra != 0:
+    #     group_sizes.append(num_units)
+    # # unit_groups = [list(range(group_sizes[i-1], group_sizes[i])) for i in range(1, len(group_sizes))]
+    # unit_groups = [list(range(0, num_units))]
     tw = 2
 
+    print("Computing quality metrics")
     vals = compute_quality_metrics(
         extracted_waveforms,
-        metric_names=[all_metrics],
+        load_if_exists=False,
+        metric_names=all_metrics,
         qm_params=all_metric_params,
-        n_jobs=-1  # use all CPUs
+        n_jobs=-1,  # use all CPUs
+        skip_pc_metrics=False,
+        progress_bar=True,
+        verbose=True
     )
     tw = 2
 
