@@ -1,2 +1,0 @@
-function bc_plotGlobalQualityMetric(varargin)
-end
