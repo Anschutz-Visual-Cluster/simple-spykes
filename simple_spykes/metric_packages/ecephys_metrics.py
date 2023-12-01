@@ -4,8 +4,11 @@ import uuid
 import warnings
 
 import numpy as np
+import pendulum
 from ecephys_spike_sorting.common.utils import load_kilosort_data
 from ecephys_spike_sorting.modules.quality_metrics.metrics import calculate_metrics
+
+from simple_spykes.util import save_json
 
 """
 Code Sourced from
@@ -16,7 +19,7 @@ Adapted to fit needs
 """
 
 
-def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_to_file=None):
+def ecephys_run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_params, save_filename=None):
     """
     Run EcePhys quality metrics
     Input for Metrics params looks like (example values below)
@@ -40,13 +43,16 @@ def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_
 
     :param sample_rate: AP band sample rate in Hz
     :param quality_metrics_params: Parameters for the quality metrics tests, see above for details
-    :param save_to_file: string to save to file, optional
+    :param save_filename: string to save to file, Set to False to ignore
     :return: json dict of the quality metrics values
     """
     warnings.warn("The EcePhys package isn't well optimized, consider using another package.")
+    if save_filename is None:
+        now = pendulum.now()
+        save_filename = f"ecephys_quality_metrics-{now.month}-{now.day}-{now.year}_{now.hour}-{now.minute}-{now.second}.json"
 
-    if save_to_file is None and not isinstance(save_to_file, str):
-        raise ValueError("Error, when specifying 'save_to_file', value must be a string!")
+    if not isinstance(save_filename, str) and (save_filename is not False):
+        raise ValueError("Error, when specifying 'save_filename', value must be a string or False!")
 
     start = time.time()
     print("Loading data...")
@@ -75,18 +81,8 @@ def run_quality_metrics(kilosort_output_directory, sample_rate, quality_metrics_
         print('Total time: ' + str(np.around(time.time() - start, 2)) + ' seconds')
         json_data = metrics.to_json()
 
-        if save_to_file:
-            other_filename = f"quality_metrics_{str(uuid.uuid4())}"
-            try:
-                print(f"Saving metrics to file '{save_to_file}'")
-                fp = open(save_to_file, "w")
-                fp.write(json_data)
-                fp.close()
-            except Exception as e:
-                print(f"Error saving metrics to specified file '{save_to_file}'! Saving to file '{other_filename}' \nError: {str(e)}")
-                fp = open(other_filename, "w")
-                fp.write(json_data)
-                fp.close()
+        if save_filename:
+            save_json(json_data, save_filename)
 
         return json.loads(json_data)
     except FileNotFoundError as e:

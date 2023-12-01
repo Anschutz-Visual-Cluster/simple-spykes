@@ -1,15 +1,24 @@
 import time
 from pathlib import Path
 
+import pendulum
 from spikeinterface.extractors import read_kilosort
 from spikeinterface.postprocessing import compute_principal_components, compute_spike_locations
 from spikeinterface.qualitymetrics import compute_quality_metrics
-from spikeinterface.extractors import read_openephys
 import spikeinterface.full as si
 from spikeinterface.preprocessing import bandpass_filter
 
+from simple_spykes.util import save_json
 
-def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, overwrite_waveform=False):
+
+def spikeinterface_run_quality_metrics(folder_path, stream_name, kilosort_output_directory, overwrite_waveform=False, save_filename=None):
+    if save_filename is None:
+        now = pendulum.now()
+        save_filename = f"spikeinterface_quality_metrics-{now.month}-{now.day}-{now.year}_{now.hour}-{now.minute}-{now.second}.json"
+
+    if not isinstance(save_filename, str) and (save_filename is not False):
+        raise ValueError("Error, when specifying 'save_filename', value must be a string or False!")
+
     # Format the name of the stream as NEO expects it
     stream_name = f"{Path(folder_path).name}#{stream_name}"
 
@@ -35,6 +44,7 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, ove
     )
 
     extensions_to_load = {
+        # https://github.com/SpikeInterface/spikeinterface/blob/3210f8eb960c404c91072596c39ef167af612353/src/spikeinterface/postprocessing/principal_component.py#L674
         "principal_components": [compute_principal_components, {
             "waveform_extractor": extracted_waveforms,  # Waveform extractor object above
             "n_components": 5,  # Number of components of PCA
@@ -71,7 +81,6 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, ove
 
     tw = 2
 
-    # https://github.com/SpikeInterface/spikeinterface/blob/3210f8eb960c404c91072596c39ef167af612353/src/spikeinterface/postprocessing/principal_component.py#L674
     # pca = compute_principal_components(waveform_extractor, n_components=5, mode='by_channel_local')
     """
     waveform_extractor,
@@ -111,7 +120,6 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, ove
     
     """
 
-    # https://github.com/SpikeInterface/spikeinterface/blob/3210f8eb960c404c91072596c39ef167af612353/src/spikeinterface/qualitymetrics/quality_metric_calculator.py#L176
     # metrics = compute_quality_metrics(waveform_extractor)
     """
     waveform_extractor,
@@ -308,18 +316,6 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, ove
         }
     }
 
-    # num_units = len(extracted_waveforms.unit_ids)
-    # units_per_iteration = 20
-    # groups = num_units // units_per_iteration
-    # extra = num_units % units_per_iteration
-    # group_sizes = list(range(0, num_units, units_per_iteration))
-    # if extra != 0:
-    #     group_sizes.append(num_units)
-    # # unit_groups = [list(range(group_sizes[i-1], group_sizes[i])) for i in range(1, len(group_sizes))]
-    # unit_groups = [list(range(0, num_units))]
-    tw = 2
-
-    print("Computing quality metrics")
     vals = compute_quality_metrics(
         extracted_waveforms,
         load_if_exists=False,
@@ -330,27 +326,16 @@ def run_quality_metrics(folder_path, stream_name, kilosort_output_directory, ove
         progress_bar=True,
         verbose=True
     )
-    tw = 2
 
-    # print("Computing different quality metrics")
-    # for metric in pc_metrics:
-    #     print(f"Working on metric '{metric}'")
-    #     start = time.time()
-    #     for unit_group in unit_groups:
-    #         print(f"Working on unit group {unit_group[0]}-{unit_group[-1]}")
-    #         vals = compute_quality_metrics(
-    #             extracted_waveforms,
-    #             metric_names=[metric],  # TODO change metric
-    #             qm_params=all_metric_params,
-    #             n_jobs=-1  # use all CPUs
-    #         )
-    #     print(f"Finished '{metric}' in {time.time() - start}")
+    json_data = vals.to_json()
 
-    # TODO Compute "synchrony" metrics
+    if save_filename:
+        save_json(json_data, save_filename)
+
+    return json_data
+
+    # TODO Compute "synchrony" metrics?
     # https://spikeinterface.readthedocs.io/en/latest/modules/qualitymetrics/synchrony.html
     # "synchrony_metrics": {
     #     "synchrony_sizes": (0, 2, 4)
-    # },
-    tw = 2
-
-    pass
+    # }

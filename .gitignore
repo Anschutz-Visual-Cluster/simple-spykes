@@ -7,3 +7,4 @@ dist/
 build/
 temp/
 tests/*Waveforms
+*pathdef.m

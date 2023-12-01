@@ -1,5 +1,3 @@
-# from simple_spykes.util.ecephys import run_quality_metrics
-from simple_spykes.util.spikeinterface_util import run_quality_metrics
 from simple_spykes.graphing.basic import graph_spikeinterface_quality_metrics, \
     graph_spikeinterface_quality_metrics_correlations
 
@@ -24,19 +22,21 @@ def graphing():
     tw = 2
 
 
-def spikeinterface():
-    # Data from \\10.33.107.246\s2\stim\recordings\jlh34_2023-05-15_16-03-21\Record Node 105\experiment1\recording1\continuous\Neuropix-PXI-104.ProbeA-AP
-
-    r = run_quality_metrics(
-        folder_path="../data\\Record Node 105",
-        stream_name="Neuropix-PXI-104.ProbeA-AP",
-        kilosort_output_directory="../data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP"
+def bombcell():
+    from simple_spykes.metric_packages import bombcell_run_quality_metrics
+    bombcell_run_quality_metrics(
+        kilosort_directory="..\\data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP",
+        raw_data_directory="..\\data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP\\*.dat",
+        metadata_directory="..\\data\\Record Node 105\\experiment1\\recording1\\*.oebin",
+        decompress_directory="..\\data\\bombcell_decompress",
+        bombcell_save_directory="..\\data\\bombcell_quality_metrics",
+        save_filename="bombcell_metrics.json"
     )
 
 
 def main():
-
-   tw = 2
+    bombcell()
+    tw = 2
 
 
 if __name__ == "__main__":

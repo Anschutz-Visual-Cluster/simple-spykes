@@ -1,16 +1,14 @@
 # simple-spykes
 
-Desc todo
+Spike Sorted Quality Metrics Python Package
 
 ## ecephys_spike_sorting
-https://github.com/AllenInstitute/ecephys_spike_sorting/blob/master/ecephys_spike_sorting/modules/quality_metrics/README.md
-metric details go here
-
-## IntBrainLabLib - ibllib
-https://int-brain-lab.github.io/iblenv/_autosummary/brainbox.metrics.single_units.html
-metric details go here
+- See: https://github.com/AllenInstitute/ecephys_spike_sorting/blob/master/ecephys_spike_sorting/modules/quality_metrics/README.md
 
 ## SpikeInterface
-https://spikeinterface.readthedocs.io/en/latest/modules/qualitymetrics.html
-metric details go here
+- See: https://spikeinterface.readthedocs.io/en/latest/modules/qualitymetrics.html
+
+## BombCell
+- MATLAB code, need to have it installed to work
+- See: https://github.com/Julie-Fabre/bombcell/wiki/Detailed-overview-of-quality-metrics
 
