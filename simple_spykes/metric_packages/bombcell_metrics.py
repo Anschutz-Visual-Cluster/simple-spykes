@@ -1,6 +1,8 @@
 # Sourced from BombCell, https://github.com/Julie-Fabre/bombcell/blob/main/bc_qualityMetrics_pipeline.m
 import json
 import os
+import sys
+import warnings
 
 MATLAB_SCRIPT = """
 %% ~~ Example bombcell pipeline ~~
@@ -67,7 +69,8 @@ fprintf(fp, myjson);
 function bc_plotGlobalQualityMetric(varargin)
 end
 """
-
+if "matlabengine" not in sys.modules:
+    warnings.warn("MatLabEngine python package not installed! Bombcell will not work!")
 
 def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadata_directory, decompress_directory, bombcell_save_directory, save_filename, gain_to_uv=0.195):
     """
@@ -87,6 +90,8 @@ def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadat
     :param save_filename: path of json file to save to
     :return:
     """
+    if "matlabengine" not in sys.modules:
+        raise ValueError("Cannot run bombcell without matlabengine python package installed!")
 
     matlab_code = MATLAB_SCRIPT.format(
         kilosort_directory=kilosort_directory,
