@@ -45,6 +45,8 @@ rawFile = bc_manageDataCompression(ephysRawDir, decompressDataLocal);
 param = bc_qualityParamValues(ephysMetaDir, rawFile, ephysKilosortPath, gain_to_uV); %for unitmatch, run this:
 % param = bc_qualityParamValuesForUnitMatch(ephysMetaDir, rawFile, ephysKilosortPath, gain_to_uV)
 
+%% Disable graphing
+param.plotGlobal = false
 
 %% compute quality metrics 
 rerun = 0;
@@ -65,9 +67,6 @@ myjson = jsonencode(qMetric)
 fp = fopen("{save_filename}", "wt");
 fprintf(fp, myjson);
 
-
-function bc_plotGlobalQualityMetric(varargin)
-end
 """
 if "matlabengine" not in sys.modules:
     warnings.warn("MatLabEngine python package not installed! Bombcell will not work!")
@@ -116,10 +115,10 @@ def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadat
     jfp.close()
 
     headers = [k for k in json_data[0].keys()]
-    reformatted_json = {h: [] for h in headers}
+    reformatted_json = {h: {} for h in headers}
     for entry in json_data:
         for h in headers:
-            reformatted_json[h].append(entry[h])
+            reformatted_json[h][str(entry["clusterID"])] = entry[h]
 
     jfp = open(save_filename, "w")
     json.dump(reformatted_json, jfp)
@@ -127,4 +126,4 @@ def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadat
 
     os.remove("bombcell_tmp_script.m")
 
-    return json_data
+    return reformatted_json
