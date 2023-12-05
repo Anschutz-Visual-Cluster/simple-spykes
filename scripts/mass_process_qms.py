@@ -19,6 +19,10 @@ def clean_tmp_dir():
 
 
 def main():
+    print("Sleeping for an hour to wait for the copy to finish")
+    import time
+    time.sleep(60*60)
+
     print("Testing raw")
     test_raw_dir = os.path.join(RAW_DIRECTORY, "2023-04-11", "continuous", "Neuropix-PXI-100.ProbeA-AP")
     bombcell_run_quality_metrics(

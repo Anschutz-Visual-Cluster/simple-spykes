@@ -68,8 +68,19 @@ fp = fopen("{save_filename}", "wt");
 fprintf(fp, myjson);
 
 """
-if "matlabengine" not in sys.modules:
-    warnings.warn("MatLabEngine python package not installed! Bombcell will not work!")
+
+
+def matlab_check():
+    try:
+        import matlab.engine
+        return True
+    except Exception as e:
+        warnings.warn("MatLabEngine python package not installed! Bombcell will not work!")
+        return False
+
+
+matlab_check()
+
 
 def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadata_directory, decompress_directory, bombcell_save_directory, save_filename, gain_to_uv=0.195):
     """
@@ -89,8 +100,11 @@ def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadat
     :param save_filename: path of json file to save to
     :return:
     """
-    if "matlabengine" not in sys.modules:
+    if not matlab_check():
         raise ValueError("Cannot run bombcell without matlabengine python package installed!")
+
+    # TODO Check matlab installation and set path, and required dependencies
+    # https://github.com/kwikteam/npy-matlab
 
     matlab_code = MATLAB_SCRIPT.format(
         kilosort_directory=kilosort_directory,
@@ -108,7 +122,7 @@ def bombcell_run_quality_metrics(kilosort_directory, raw_data_directory, metadat
 
     import matlab.engine
     eng = matlab.engine.start_matlab()
-    eng.bombcell_tmp_script(nargout=0)
+    eng.bombcell_tmp_script(nargout=0)  # TODO figure out if it crashed and report better in python
 
     jfp = open(save_filename, "r")
     json_data = json.load(jfp)
