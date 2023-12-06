@@ -20,26 +20,27 @@ def clean_tmp_dir():
 
 def main():
     print("Testing raw")
-    test_raw_dir = os.path.join(RAW_DIRECTORY, "2023-04-11", "continuous", "Neuropix-PXI-100.ProbeA-AP")
+    test_date = "2023-07-24"
+    test_raw_dir = os.path.join(RAW_DIRECTORY, test_date, "continuous", "Neuropix-PXI-100.ProbeA-AP")
     bombcell_run_quality_metrics(
         kilosort_directory=test_raw_dir,
         raw_data_directory=os.path.join(test_raw_dir, "continuous.dat"),
-        metadata_directory=os.path.join(RAW_DIRECTORY, "2023-04-11", "structure.oebin"),
+        metadata_directory=os.path.join(RAW_DIRECTORY, test_date, "structure.oebin"),
         decompress_directory=TEMP_DIRECTORY,
         bombcell_save_directory=TEMP_DIRECTORY,
-        save_filename="2023-04-11_testing_raw_metrics.json"
+        save_filename=f"{test_date}_testing_raw_metrics.json"
     )
     clean_tmp_dir()
 
     print("Testing curated")
-    test_curated_dir = os.path.join(CURATED_DIRECTORY, "2023-04-11")
+    test_curated_dir = os.path.join(CURATED_DIRECTORY, test_date)
     bombcell_run_quality_metrics(
         kilosort_directory=test_curated_dir,
         raw_data_directory=os.path.join(test_curated_dir, "continuous.dat"),
         metadata_directory=os.path.join(test_curated_dir, "structure.oebin"),
         decompress_directory=TEMP_DIRECTORY,
         bombcell_save_directory=TEMP_DIRECTORY,
-        save_filename="2023-04-11_testing_curated_metrics.json"
+        save_filename=f"{test_date}_testing_curated_metrics.json"
     )
     clean_tmp_dir()
 
