@@ -13,36 +13,45 @@ TEMP_DIRECTORY = "D:\\tmp"
 
 def clean_tmp_dir():
     print(f"Cleaning up temp dir '{TEMP_DIRECTORY}'..")
-    shutil.rmtree(TEMP_DIRECTORY)
+    shutil.rmtree(TEMP_DIRECTORY, ignore_errors=True)
     os.mkdir(TEMP_DIRECTORY)
     print("Done cleaning up temp dir")
 
 
-def main():
-    print("Testing raw")
-    test_date = "2023-07-24"
-    test_raw_dir = os.path.join(RAW_DIRECTORY, test_date, "continuous", "Neuropix-PXI-100.ProbeA-AP")
-    bombcell_run_quality_metrics(
-        kilosort_directory=test_raw_dir,
-        raw_data_directory=os.path.join(test_raw_dir, "continuous.dat"),
-        metadata_directory=os.path.join(RAW_DIRECTORY, test_date, "structure.oebin"),
-        decompress_directory=TEMP_DIRECTORY,
-        bombcell_save_directory=TEMP_DIRECTORY,
-        save_filename=f"{test_date}_testing_raw_metrics.json"
-    )
+def run_bombcell(params, date_name):
+    try:
+        bombcell_run_quality_metrics(**params)
+    except Exception as e:
+        print(f"Failed on {date_name} with error {str(e)}")
+        with open(f"error-{date_name}.txt", "w") as f:
+            f.write(str(e))
     clean_tmp_dir()
 
-    print("Testing curated")
-    test_curated_dir = os.path.join(CURATED_DIRECTORY, test_date)
-    bombcell_run_quality_metrics(
-        kilosort_directory=test_curated_dir,
-        raw_data_directory=os.path.join(test_curated_dir, "continuous.dat"),
-        metadata_directory=os.path.join(test_curated_dir, "structure.oebin"),
-        decompress_directory=TEMP_DIRECTORY,
-        bombcell_save_directory=TEMP_DIRECTORY,
-        save_filename=f"{test_date}_testing_curated_metrics.json"
-    )
-    clean_tmp_dir()
+def main():
+    # print("Testing raw")
+    # test_date = "2023-07-24"
+    # test_raw_dir = os.path.join(RAW_DIRECTORY, test_date, "continuous", "Neuropix-PXI-100.ProbeA-AP")
+    # bombcell_run_quality_metrics(
+    #     kilosort_directory=test_raw_dir,
+    #     raw_data_directory=os.path.join(test_raw_dir, "continuous.dat"),
+    #     metadata_directory=os.path.join(RAW_DIRECTORY, test_date, "structure.oebin"),
+    #     decompress_directory=TEMP_DIRECTORY,
+    #     bombcell_save_directory=TEMP_DIRECTORY,
+    #     save_filename=f"{test_date}_testing_raw_metrics.json"
+    # )
+    # clean_tmp_dir()
+    #
+    # print("Testing curated")
+    # test_curated_dir = os.path.join(CURATED_DIRECTORY, test_date)
+    # bombcell_run_quality_metrics(
+    #     kilosort_directory=test_curated_dir,
+    #     raw_data_directory=os.path.join(test_curated_dir, "continuous.dat"),
+    #     metadata_directory=os.path.join(test_curated_dir, "structure.oebin"),
+    #     decompress_directory=TEMP_DIRECTORY,
+    #     bombcell_save_directory=TEMP_DIRECTORY,
+    #     save_filename=f"{test_date}_testing_curated_metrics.json"
+    # )
+    # clean_tmp_dir()
 
     list_of_dates = os.listdir(CURATED_DIRECTORY)
     raw_dates = os.listdir(RAW_DIRECTORY)
@@ -74,15 +83,16 @@ def main():
         }
 
         print("Processing RAW")
-        bombcell_run_quality_metrics(**params)
+        run_bombcell(params, date)
         clean_tmp_dir()
 
         print("Processing CURATED")
         params["kilosort_directory"] = os.path.join(RAW_DIRECTORY, date)  # TODO change up dir structure of curated?
         params["save_filename"] = f"bombcell-{date}-curated.json"
 
-        bombcell_run_quality_metrics(**params)
+        run_bombcell(params, date)
         clean_tmp_dir()
+
     print("Done!")
 
 
