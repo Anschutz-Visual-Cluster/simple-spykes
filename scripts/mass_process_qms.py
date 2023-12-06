@@ -19,10 +19,6 @@ def clean_tmp_dir():
 
 
 def main():
-    print("Sleeping for an hour to wait for the copy to finish")
-    import time
-    time.sleep(60*60)
-
     print("Testing raw")
     test_raw_dir = os.path.join(RAW_DIRECTORY, "2023-04-11", "continuous", "Neuropix-PXI-100.ProbeA-AP")
     bombcell_run_quality_metrics(
@@ -36,7 +32,7 @@ def main():
     clean_tmp_dir()
 
     print("Testing curated")
-    test_curated_dir = os.path.join(RAW_DIRECTORY, "2023-04-11")
+    test_curated_dir = os.path.join(CURATED_DIRECTORY, "2023-04-11")
     bombcell_run_quality_metrics(
         kilosort_directory=test_curated_dir,
         raw_data_directory=os.path.join(test_curated_dir, "continuous.dat"),
