@@ -18,14 +18,15 @@ def clean_tmp_dir():
     print("Done cleaning up temp dir")
 
 
-def run_bombcell(params, date_name):
+def run_bombcell(params, date_name, suffix):
     try:
         bombcell_run_quality_metrics(**params)
     except Exception as e:
         print(f"Failed on {date_name} with error {str(e)}")
-        with open(f"error-{date_name}.txt", "w") as f:
+        with open(f"error-{date_name}-{suffix}.txt", "w") as f:
             f.write(str(e))
     clean_tmp_dir()
+
 
 def main():
     # print("Testing raw")
@@ -71,7 +72,8 @@ def main():
     for date in list_of_dates:
         print(f"Processing '{date}'")
         # grab something like 'Neuropix-PXI-104.ProbeA-AP'
-        probe_folder_name = os.listdir(os.path.join(RAW_DIRECTORY, date, "continuous"))[0]
+        raw_base_folder = os.path.join(RAW_DIRECTORY, date, "continuous")
+        probe_folder_name = os.path.join(raw_base_folder, os.listdir(raw_base_folder)[0])
 
         params = {
             "kilosort_directory": probe_folder_name,
@@ -82,15 +84,15 @@ def main():
             "save_filename": f"bombcell-{date}-raw.json"
         }
 
-        print("Processing RAW")
-        run_bombcell(params, date)
-        clean_tmp_dir()
+        # print("Processing RAW")
+        # run_bombcell(params, date, "raw")
+        # clean_tmp_dir()
 
         print("Processing CURATED")
-        params["kilosort_directory"] = os.path.join(RAW_DIRECTORY, date)  # TODO change up dir structure of curated?
+        params["kilosort_directory"] = os.path.join(CURATED_DIRECTORY, date)  # TODO change up dir structure of curated?
         params["save_filename"] = f"bombcell-{date}-curated.json"
 
-        run_bombcell(params, date)
+        run_bombcell(params, date, "curated")
         clean_tmp_dir()
 
     print("Done!")
