@@ -26,6 +26,7 @@ def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]]
     for filename in metrics_file:
         with open(filename, "r") as f:
             loaddata = json.load(f)
+            # loaddata = {"isolation_distance": loaddata["isolation_distance"]}
         [loaddata.pop(ex, None) for ex in exclude]
         data.update(loaddata)
 
@@ -99,7 +100,7 @@ def raw_quality_metrics_unit_graphs(metrics_file: Union[str, list[str]], use_com
         y_vals = [v or 0 for v in to_graph]
         graphing_data.append(
             RawGraphData()
-            .add_func("bar", {"x": x_vals, "height": y_vals})
+            .bar(x_vals, height=y_vals)
             .add_value("qm_name", qm_name)
             .add_value("plot_type", "Unit Graphs")
         )
@@ -122,14 +123,78 @@ def graph_quality_metrics_unit_graphs(metrics_file: Union[str, list[str]], save_
 
     for graph_data in graphing_data:
         qm_name = graph_data.get_value("qm_name")
-        graph_data.add_func("title", [f"{save_prefix}{qm_name}"])
+        graph_data.title(f"{save_prefix}{qm_name}")
         if save_folder:
-            graph_data.add_func("savefig", [f"{save_folder}/{save_prefix}unit-{qm_name}.png"])
+            graph_data.savefig(f"{save_folder}/{save_prefix}unit-{qm_name}.png")
             graph_data.clf()
         else:
             graph_data.show()
 
         Grapher(graph_data, plt).run()
+
+
+def raw_quality_metrics_calc_prob_dist(qm_name: str, qm_data: list[float]) -> Union[bool, RawGraphData]:
+    if qm_name in ["epoch_name"]:  # Don't graph these metrics here
+        return False
+    # TODO remove or set to 0 none vals?
+    # qm_values = np.array([v or 0 for v in list(qm_data.values())])
+    qm_values = np.array(qm_data)
+    qm_values = qm_values[qm_values != None]  # Remove none values
+
+    if len(qm_values) == 0:
+        print(f"Can't graph prob dist of metric '{qm_name}' all vals are None")
+        return False  # Can't graph this metric
+
+    # bin_size = np.mean(qm_values) / 2
+    bin_size = (3.49 * np.std(qm_values) * np.power(len(qm_values), -1 / 3)) / 2
+    bin_size = np.clip(bin_size, 0.0001, 99999999999999999)
+    max_qm_value = np.clip(np.max(qm_values), 0, 99999999999999999)
+    min_qm_value = np.clip(np.min(qm_values), -99999999999999999, 0.0001)
+
+    # bin_edges = [bin_size*c for c in range(math.floor(round(max_qm_value/bin_size))]
+    num_bins = (max_qm_value - min_qm_value) / bin_size
+    num_bins = np.clip(num_bins, 1, len(qm_values))
+    if num_bins == 1:
+        num_bins = len(qm_values)
+
+    bin_edges = np.linspace(
+        min_qm_value,
+        max_qm_value,
+        num=math.ceil(math.fabs(num_bins))
+        # Round up to include values that lie in part of a bin_size on the pos edge
+    )
+
+    bin_counts_map = {b: 0 for b in bin_edges}
+    for el in qm_values:
+        if el > max_qm_value:
+            bin_counts_map[bin_edges[-1]] = bin_counts_map[bin_edges[-1]] + 1
+        elif el < min_qm_value:
+            bin_counts_map[bin_edges[0]] = bin_counts_map[bin_edges[0]] + 1
+        else:
+            # Find all values in the qm_values that are between the bin edges
+            lie_between = bin_edges[(bin_edges - bin_size < el) & (el < bin_edges + bin_size)]
+            # Increment the count in the bin of the leftmost edge (-1, last value in the fit)
+            bin_counts_map[lie_between[-1]] = bin_counts_map[lie_between[-1]] + 1
+
+    bin_counts = np.array(list(bin_counts_map.values()))
+    total = np.sum(bin_counts)
+    percentage_weights = bin_counts / total
+
+    # Fit a spline to the histogram
+    spline_func = UnivariateSpline(
+        bin_edges - bin_size / 2,  # x vals
+        percentage_weights,  # y vals
+        s=len(bin_counts)  # smoothing factor
+    )
+
+    r = RawGraphData() \
+        .bar(bin_edges, percentage_weights, width=bin_size/2, label=f"QM Value with {len(bin_counts)} bins") \
+        .add_value("bin_size", bin_size) \
+        .plot(bin_edges - bin_size / 2, spline_func(bin_edges - bin_size / 2), color="red", linewidth=2, label="Spline Approx") \
+        .add_value("bin_count", "bin_counts") \
+        .add_value("binned_by", round(bin_size, 2)) \
+        .add_value("plot_type", "Probability Distribution")
+    return r
 
 
 def raw_quality_metrics_prob_dists(metrics_file: Union[str, list[str]], use_common_units: bool = False) -> list[RawGraphData]:
@@ -142,76 +207,9 @@ def raw_quality_metrics_prob_dists(metrics_file: Union[str, list[str]], use_comm
     """
     all_data = _load_file(metrics_file, exclude=["epoch_name", "cluster_id"], use_common_units=use_common_units)
 
-    def calc_qm(qm_name: str, qm_data: list[float]) -> Union[bool, RawGraphData]:
-        if qm_name in ["epoch_name"]:  # Don't graph these metrics here
-            return False
-        # TODO remove or set to 0 none vals?
-        # qm_values = np.array([v or 0 for v in list(qm_data.values())])
-        qm_values = np.array(qm_data)
-        qm_values = qm_values[qm_values != None]  # Remove none values
-
-        if len(qm_values) == 0:
-            print(f"Can't graph prob dist of metric '{qm_name}' all vals are None")
-            return False  # Can't graph this metric
-
-        # bin_size = np.mean(qm_values) / 2
-        bin_size = (3.49 * np.std(qm_values) * np.power(len(qm_values), -1 / 3)) / 2
-        if bin_size < 0.001:
-            bin_size = 0.001
-        max_qm_value = np.clip(np.max(qm_values), 0, 9999999)
-        min_qm_value = np.clip(np.min(qm_values), -9999999, 0.0001)
-
-        # bin_edges = [bin_size*c for c in range(math.floor(round(max_qm_value/bin_size))]
-        num_bins = (max_qm_value - min_qm_value) / bin_size
-        bin_edges = np.linspace(
-            min_qm_value,
-            max_qm_value,
-            num=math.ceil(math.fabs(num_bins))
-            # Round up to include values that lie in part of a bin_size on the pos edge
-        )
-
-        bin_counts = {b: 0 for b in bin_edges}
-        for el in qm_values:
-            # Find all values in the qm_values that are between the bin edges
-            lie_between = bin_edges[(bin_edges - bin_size < el) & (el < bin_edges + bin_size)]
-            # Increment the count in the bin of the leftmost edge (-1, last value in the fit)
-            bin_counts[lie_between[-1]] = bin_counts[lie_between[-1]] + 1
-
-        bin_counts = np.array(list(bin_counts.values()))
-        total = np.sum(bin_counts)
-        percentage_weights = bin_counts / total
-
-        # Fit a spline to the histogram
-        spline_func = UnivariateSpline(
-            bin_edges - bin_size / 2,  # x vals
-            percentage_weights,  # y vals
-            s=len(bin_counts)  # smoothing factor
-        )
-
-        return RawGraphData() \
-            .add_func(
-            "bar", {
-                "x": bin_edges,
-                "height": percentage_weights,
-                "label": f"QM Value with {len(bin_counts)} bins"
-            }) \
-            .add_value("bin_size", bin_size) \
-            .add_value("bin_count", "bin_counts") \
-            .add_func("plot",[
-                bin_edges - bin_size / 2,
-                spline_func(bin_edges - bin_size / 2),
-            ],
-            {
-                "color": "red",
-                "linewidth": 2,
-                "label": "Spline Approx"
-            }) \
-            .add_value("binned_by", round(bin_size, 2)) \
-            .add_value("plot_type", "Probability Distribution")
-
     graphing_data: list[RawGraphData] = []
     for qm_key_name, qm_value in all_data.items():
-        val = calc_qm(qm_key_name, qm_value)
+        val = raw_quality_metrics_calc_prob_dist(qm_key_name, qm_value)
         if val:
             val.add_value("qm_name", qm_key_name)
             graphing_data.append(val)
@@ -241,7 +239,7 @@ def graph_quality_metrics_prob_dists(metrics_file: Union[str, list[str]], save_f
         graph_data.add_func("ylabel", ["Probability"])
         graph_data.simple("legend")
         if save_folder:
-            graph_data.add_func("savefig", [f"{save_folder}/{save_prefix}prob-{qm_name}.png"])
+            graph_data.savefig(f"{save_folder}/{save_prefix}prob-{qm_name}.png")
             graph_data.clf()
         else:
             graph_data.show()
@@ -270,7 +268,8 @@ def raw_quality_metrics_correlations(metrics_file: Union[str, list[str]], use_co
         graph_data = RawGraphData() \
             .add_value("y_idx", y_idx) \
             .add_value("x_idx", x_idx) \
-            .add_value("plot_type", "Correlations")
+            .add_value("plot_type", "Correlations") \
+            .add_value("qm_count", qm_count)
 
         keylist = list(all_data.keys())
 
@@ -280,20 +279,17 @@ def raw_quality_metrics_correlations(metrics_file: Union[str, list[str]], use_co
         y_qm_name = keylist[y_idx]
         y_data = all_data[y_qm_name]
 
-        graph_data.add_func(
-            "scatter",
-            {"x": x_data, "y": y_data, "s": 1}
-        )
+        graph_data.scatter(x=x_data, y=y_data, s=1)
 
         if x_idx == 0:
-            graph_data.add_func("set_ylabel", {"ylabel": y_qm_name, "rotation": "horizontal", "ha": "right"})
+            graph_data.add_func("set_ylabel", [], {"ylabel": y_qm_name, "rotation": "horizontal", "ha": "right"})
         if y_idx == len(keylist) - 1:
-            graph_data.add_func("set_xlabel", {"xlabel": x_qm_name, "rotation": 90})
+            graph_data.add_func("set_xlabel", [], {"xlabel": x_qm_name, "rotation": 90})
 
         if y_idx != len(keylist) - 1:
-            graph_data.add_func("set_xticks", {"ticks": []})
+            graph_data.add_func("set_xticks", [], {"ticks": []})
         if x_idx != 0:
-            graph_data.add_func("set_yticks", {"ticks": []})
+            graph_data.add_func("set_yticks", [], {"ticks": []})
         return graph_data
 
     progress = []
@@ -316,7 +312,7 @@ def graph_quality_metrics_correlations(metrics_file: Union[str, list[str]], save
     :return: None
     """
     graphing_data = raw_quality_metrics_correlations(metrics_file, use_common_units)
-    qm_count = len(graphing_data)
+    qm_count = graphing_data[0].get_value("qm_count")
 
     progress = []
     for row in range(qm_count):
@@ -334,7 +330,7 @@ def graph_quality_metrics_correlations(metrics_file: Union[str, list[str]], save
     for graph_data in graphing_data:
         x_idx = graph_data.get_value("x_idx")
         y_idx = graph_data.get_value("y_idx")
-        Grapher(graph_data, axes[x_idx, y_idx]).run()
+        Grapher(graph_data, axes[y_idx, x_idx]).run()
 
     if save_folder:
         plt.tight_layout()
@@ -369,17 +365,17 @@ def graph_quality_metrics(metrics_file: Union[str, list[str]], save_folder: Unio
     # Unit vs qm value
     print("Graphing Units vs Quality Metric Value")
     graph_quality_metrics_unit_graphs(metrics_file, save_folder=save_folder,
-                                                     use_common_units=use_common_units, save_prefix=save_prefix)
+                                      use_common_units=use_common_units, save_prefix=save_prefix)
 
     # Probability distribution of the quality metrics values across all units
     print("Graphing Probability Dist of Quality Metric Values")
     graph_quality_metrics_prob_dists(metrics_file, save_folder=save_folder,
-                                                    use_common_units=use_common_units, save_prefix=save_prefix)
+                                     use_common_units=use_common_units, save_prefix=save_prefix)
 
     # All quality metrics plotted against another to determine correlations
     print("Graphing Quality Metric v Metric values")
     graph_quality_metrics_correlations(metrics_file, save_folder=save_folder,
-                                                      use_common_units=use_common_units, save_prefix=save_prefix)
+                                       use_common_units=use_common_units, save_prefix=save_prefix)
 
     print(f"Done graphing")
     print("--")

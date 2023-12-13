@@ -6,9 +6,15 @@ class RawGraphData(object):
         self.funcs = []
         self.values = {}
 
-    def add_func(self, func_name, param_dict, optional):
-        tb = traceback.extract_stack()[:-1]  # Exclude this in the stack
-        self.funcs.append({"$func": func_name, "$params": param_dict, "$traceback": tb})
+    def __getattr__(self, item):
+        def func(*args, **kwargs):
+            return self.add_func(func_name=item, args=args, kwargs=kwargs)
+        return func
+
+    def add_func(self, func_name, args=[], kwargs={}):
+        tb = traceback.extract_stack()
+        tb.pop()  # Exclude current frame in the stack
+        self.funcs.append({"$func": func_name, "$args": args, "$kwargs": kwargs, "$traceback": tb})
         return self
 
     def add_value(self, value_name, value):

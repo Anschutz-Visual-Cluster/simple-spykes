@@ -9,16 +9,18 @@ class Grapher(object):
 
     def _run_part(self, part: dict):
         func_name = part["$func"]
-        params = part["$params"]
+        args = part["$args"]
+        kwargs = part["$kwargs"]
+
         tb = part["$traceback"]
         try:
-            if isinstance(params, list):
-                getattr(self.plotter, func_name)(*params)
-            else:
-                getattr(self.plotter, func_name)(**params)
+            getattr(self.plotter, func_name)(*args, **kwargs)
         except Exception as e:
 
             raise ValueError(f"Error plotting Graph {part}!\n\nError: {str(e)}\n\nStack:\n\n {''.join(tb.format())}")
+
+        if func_name == "show":
+            tw = 2
 
     def run(self):
         for part in self.graph_data.funcs:

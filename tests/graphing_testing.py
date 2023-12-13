@@ -13,12 +13,11 @@ def graphing(metrics_file, save_prefix, do_save):
 def graphing_testing():
     os.chdir("metric_data")
 
-    do_save = False
+    do_save = True
 
     graphing("spikeinterface_quality_metrics.json", "spikeinterface-", do_save)
     graphing("spikeinterface_pc_quality_metrics.json", "spikeinterface-pc-", do_save)
-    graphing(["spikeinterface_quality_metrics.json", "spikeinterface_pc_quality_metrics.json"], "spikeinterface-all-",
-             do_save)
+    graphing(["spikeinterface_quality_metrics.json", "spikeinterface_pc_quality_metrics.json"], "spikeinterface-all-", do_save)
     graphing("bombcell_metrics.json", "bombcell-", do_save)
     tw = 2
 
