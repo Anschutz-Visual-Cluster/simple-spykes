@@ -55,7 +55,7 @@ def ecephys_run_quality_metrics(kilosort_output_directory, sample_rate, quality_
         raise ValueError("Error, when specifying 'save_filename', value must be a string or False!")
 
     start = time.time()
-    print("Loading data...")
+    print("Loading metric_data...")
     try:
         load_result = load_kilosort_data(
             kilosort_output_directory,

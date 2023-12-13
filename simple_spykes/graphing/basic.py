@@ -1,32 +1,21 @@
 import json
 import math
-import os
-from typing import Optional, Union, Any
-
+from typing import Optional, Union
 import matplotlib.pyplot as plt
-import matplotlib.scale
 import numpy as np
-import sklearn.preprocessing
 from scipy.interpolate import UnivariateSpline
-
-GraphingDict = dict[str, dict[str, Any]]
-"""
-GraphingDict format
-{
-    # Function to call with x & y values
-    "funcname": [x_vals, y_vals],
-    
-    # When 'funcname' is called, use the params in the dict, optional
-    "$funcname$params": {"param1: val, "param2": val2, ...},
-    
-    # Value to store that could be useful later
-    "_value": "Any value here"
-}
-"""
+from simple_spykes.graphing.grapher import Grapher
+from simple_spykes.graphing.raw_graphdata import RawGraphData
 
 
-def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] = None, normalize: bool = False,
+def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] = None,
                use_common_units: bool = False) -> dict:
+    """
+    :param metrics_file: string filename to read from
+    :param use_common_units: If true, will only use units that match up for each metric. (Sometimes certain metrics exclude units)
+    :param exclude: List of string values from the qm file to exclude from loading
+    :return: dict of QM formatted metric_data
+    """
     if exclude is None:
         exclude = ["epoch_name", "cluster_id", "clusterID", "phy_clusterID"]
 
@@ -43,13 +32,13 @@ def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]]
     # Normalize broken rn
     # if normalize:
     #     d2 = {}
-    #     for k, v in data.items():
+    #     for k, v in metric_data.items():
     #         d2[k] = {c: sklearn.preprocessing.normalize([list(v.values())]) for c in range(len(v.keys()))}
     #         tw = 2
-    #     data = d2
+    #     metric_data = d2
     #
     if not use_common_units:
-        # Check that the data of QMs have the same length, unless using common units then ignore
+        # Check that the metric_data of QMs have the same length, unless using common units then ignore
         val_len = None
         key_used_for_len = None
         for k, v in data.items():
@@ -85,31 +74,40 @@ def _load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]]
             to_add.append(data[key][str(unit)])
         to_add = np.array(to_add)
         if np.all(to_add == None) or np.all(to_add == 0):
-            print(f"All values of metric '{key}' are None or 0! Excluding from graphing data")
+            print(f"All values of metric '{key}' are None or 0! Excluding from graphing metric_data")
         else:
             new_data[key] = to_add
     return new_data
 
 
-def raw_quality_metrics_unit_graphs(metrics_file: str, use_common_units: bool = False) -> GraphingDict:
+def raw_quality_metrics_unit_graphs(metrics_file: Union[str, list[str]], use_common_units: bool = False) -> list[RawGraphData]:
     """
     Return the calculated values for the graphs, but don't plot them
-    :return: GraphingDict data
+
+    :param metrics_file: string filename to read from
+    :param use_common_units: If true, will only use units that match up for each metric. (Sometimes certain metrics exclude units)
+    :return: list of RawGraphData
     """
     data = _load_file(metrics_file, use_common_units=use_common_units)
 
     quality_metric_names = list(data.keys())
-    graphing_data: GraphingDict = {}
+    graphing_data: list[RawGraphData] = []
 
     for qm_name in quality_metric_names:
         to_graph = data[qm_name]
         x_vals = [int(v) for v in range(len(to_graph))]
         y_vals = [v or 0 for v in to_graph]
-        graphing_data[qm_name] = {"bar": [x_vals, y_vals]}
+        graphing_data.append(
+            RawGraphData()
+            .add_func("bar", {"x": x_vals, "height": y_vals})
+            .add_value("qm_name", qm_name)
+            .add_value("plot_type", "Unit Graphs")
+        )
+
     return graphing_data
 
 
-def graph_quality_metrics_unit_graphs(metrics_file: str, save_folder: Union[bool, str] = False,
+def graph_quality_metrics_unit_graphs(metrics_file: Union[str, list[str]], save_folder: Union[bool, str] = False,
                                       use_common_units: bool = False, save_prefix: str = ""):
     """
     Shows all the graphs for Unit vs the corresponding quality metric value
@@ -120,34 +118,31 @@ def graph_quality_metrics_unit_graphs(metrics_file: str, save_folder: Union[bool
     :param save_prefix: prefix to put in front of the saved file, not the same as the directory
     :return: None
     """
-    data = _load_file(metrics_file, use_common_units=use_common_units)
-    graphing_data = raw_quality_metrics_unit_graphs(metrics_file, use_common_units)
+    graphing_data: list[RawGraphData] = raw_quality_metrics_unit_graphs(metrics_file, use_common_units)
 
-    quality_metric_names = list(data.keys())
-    for qm_name in quality_metric_names:
-        x_vals, y_vals = graphing_data[qm_name]["bar"]
-        plt.bar(x_vals, y_vals)
-        plt.title(f"{save_prefix}{qm_name}")
+    for graph_data in graphing_data:
+        qm_name = graph_data.get_value("qm_name")
+        graph_data.add_func("title", [f"{save_prefix}{qm_name}"])
         if save_folder:
-            plt.savefig(f"{save_folder}/{save_prefix}unit-{qm_name}.png")
-            plt.clf()
+            graph_data.add_func("savefig", [f"{save_folder}/{save_prefix}unit-{qm_name}.png"])
+            graph_data.clf()
         else:
-            plt.show()
+            graph_data.show()
+
+        Grapher(graph_data, plt).run()
 
 
-def raw_quality_metrics_prob_dists(metrics_file: str, use_common_units: bool = False) -> GraphingDict:
+def raw_quality_metrics_prob_dists(metrics_file: Union[str, list[str]], use_common_units: bool = False) -> list[RawGraphData]:
     """
     Probability distributions of each metric across the units
 
     :param metrics_file: string filename to read from
     :param use_common_units: If true, will only use units that match up for each metric. (Sometimes certain metrics exclude units)
-    :return: GraphingDict data
+    :return: list of RawGraphData
     """
     all_data = _load_file(metrics_file, exclude=["epoch_name", "cluster_id"], use_common_units=use_common_units)
 
-    def calc_qm(qm_name: str, qm_data: list[float]) -> Union[bool, GraphingDict]:
-        qm_graph_data = {}
-
+    def calc_qm(qm_name: str, qm_data: list[float]) -> Union[bool, RawGraphData]:
         if qm_name in ["epoch_name"]:  # Don't graph these metrics here
             return False
         # TODO remove or set to 0 none vals?
@@ -186,11 +181,6 @@ def raw_quality_metrics_prob_dists(metrics_file: str, use_common_units: bool = F
         total = np.sum(bin_counts)
         percentage_weights = bin_counts / total
 
-        qm_graph_data["bar"] = [bin_edges, percentage_weights]
-        qm_graph_data["_bin_size"] = bin_size
-        qm_graph_data["_bin_count"] = bin_counts
-        qm_graph_data["$bar$label"] = f"QM Value with {len(bin_counts)} bins"
-
         # Fit a spline to the histogram
         spline_func = UnivariateSpline(
             bin_edges - bin_size / 2,  # x vals
@@ -198,25 +188,38 @@ def raw_quality_metrics_prob_dists(metrics_file: str, use_common_units: bool = F
             s=len(bin_counts)  # smoothing factor
         )
 
-        # Save plot data
-        qm_graph_data["plot"] = [bin_edges - bin_size / 2, spline_func(bin_edges - bin_size / 2)]
-        qm_graph_data["$plot$color"] = "red"
-        qm_graph_data["$plot$linewidth"] = 2
-        qm_graph_data["$plot$label"] = "Spline approx"
-        qm_graph_data["_binned_by"] = round(bin_size, 2)
+        return RawGraphData() \
+            .add_func(
+            "bar", {
+                "x": bin_edges,
+                "height": percentage_weights,
+                "label": f"QM Value with {len(bin_counts)} bins"
+            }) \
+            .add_value("bin_size", bin_size) \
+            .add_value("bin_count", "bin_counts") \
+            .add_func("plot",[
+                bin_edges - bin_size / 2,
+                spline_func(bin_edges - bin_size / 2),
+            ],
+            {
+                "color": "red",
+                "linewidth": 2,
+                "label": "Spline Approx"
+            }) \
+            .add_value("binned_by", round(bin_size, 2)) \
+            .add_value("plot_type", "Probability Distribution")
 
-        return qm_graph_data
-
-    graphing_data: GraphingDict = {}
+    graphing_data: list[RawGraphData] = []
     for qm_key_name, qm_value in all_data.items():
         val = calc_qm(qm_key_name, qm_value)
         if val:
-            graphing_data[qm_key_name] = val
+            val.add_value("qm_name", qm_key_name)
+            graphing_data.append(val)
 
     return graphing_data
 
 
-def graph_quality_metrics_prob_dists(metrics_file: str, save_folder: Union[bool, str] = False,
+def graph_quality_metrics_prob_dists(metrics_file: Union[str, list[str]], save_folder: Union[bool, str] = False,
                                      use_common_units: bool = False, save_prefix: str = ""):
     """
     Probability distributions of each metric across the units
@@ -227,66 +230,47 @@ def graph_quality_metrics_prob_dists(metrics_file: str, save_folder: Union[bool,
     :param save_prefix: prefix to put in front of the saved file, not the same as the directory
     :return: None
     """
-    all_data = _load_file(metrics_file, exclude=["epoch_name", "cluster_id"], use_common_units=use_common_units)
 
-    def graph_qm(qm_name: str, qm_data: dict[str, Any]):
-        bin_edges, percentage_weights = qm_data["bar"]
-        bin_size = qm_data["_bin_size"]
+    graphing_data: list[RawGraphData] = raw_quality_metrics_prob_dists(metrics_file, use_common_units)
+    for graph_data in graphing_data:
+        qm_name = graph_data.get_value("qm_name")
+        binned_by = graph_data.get_value("binned_by")
 
-        plt.bar(
-            bin_edges,
-            percentage_weights,
-            width=bin_size / 2,
-            label=qm_data["$bar$label"]
-        )
-
-        xspline, yspline = qm_data["plot"]
-
-        # Plot spline
-        plt.plot(
-            xspline,
-            yspline,
-            color=qm_data["$plot$color"],
-            linewidth=qm_data["$plot$linewidth"],
-            label=qm_data["$plot$label"]
-        )
-
-        plt.title(f"{save_prefix}{qm_name} Probability Density Histogram")
-        plt.xlabel(f"{qm_name} value (binned by {qm_data['_binned_by']})")
-        plt.ylabel("Probability")
-        plt.legend()
+        graph_data.add_func("title", [f"{save_prefix}{qm_name} Probability Density Histogram"])
+        graph_data.add_func("xlabel", [f"{qm_name} value (binned by {binned_by})"])
+        graph_data.add_func("ylabel", ["Probability"])
+        graph_data.simple("legend")
         if save_folder:
-            plt.savefig(f"{save_folder}/{save_prefix}prob-{qm_name}.png")
-            plt.clf()
+            graph_data.add_func("savefig", [f"{save_folder}/{save_prefix}prob-{qm_name}.png"])
+            graph_data.clf()
         else:
-            plt.show()
+            graph_data.show()
 
-    graphing_data = raw_quality_metrics_prob_dists(metrics_file, use_common_units)
-    for k, v in all_data.items():
-        graph_qm(k, graphing_data[k])
+        Grapher(graph_data, plt).run()
 
-# TODO OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 
-def graph_spikeinterface_quality_metrics_correlations(metrics_file: Union[str, list[str]], save_folder=Optional[str],
-                                                      use_common_units: bool = False, save_prefix: str = ""):
+def raw_quality_metrics_correlations(metrics_file: Union[str, list[str]], use_common_units: bool = False) -> list[RawGraphData]:
     """
     Plot each metric value against each other to determine how they correlate
 
     :param metrics_file: string filename to read from
-    :param save: If set, will save the graph under the given foldername str, else will display
-    :return:
+    :param use_common_units: If true, will only use units that are present in all QM results
+    :return: list of RawGraphData
     """
+
     all_data = _load_file(metrics_file, use_common_units=use_common_units, exclude=[
-        "l_ratio", "epoch_name",
-        "cluster_id", "clusterID", "phy_clusterID", "maxChannels", "nPeaks", "nSpikes", "RPV_tauR_estimate",
-        "useTheseTimesStart", "useTheseTimesStop", "nTroughs", "isSomatic", "fractionRPVs_estimatedTauR",
-        "ksTest_pValue"
-    ])  # Exclude l_ratio since it has no data
+        "epoch_name", "cluster_id", "clusterID", "phy_clusterID", "maxChannels", "nPeaks", "nSpikes",
+        "RPV_tauR_estimate", "useTheseTimesStart", "useTheseTimesStop", "nTroughs", "isSomatic",
+        "fractionRPVs_estimatedTauR", "ksTest_pValue"
+    ])  # Exclude
 
     qm_count = len(list(all_data.keys()))
 
-    def plot_subplot(ax, x_idx, y_idx):
-        subplot = ax[y_idx, x_idx]  # Flip plot index to align axes
+    def raw_subplot(x_idx, y_idx) -> RawGraphData:
+        graph_data = RawGraphData() \
+            .add_value("y_idx", y_idx) \
+            .add_value("x_idx", x_idx) \
+            .add_value("plot_type", "Correlations")
 
         keylist = list(all_data.keys())
 
@@ -296,51 +280,85 @@ def graph_spikeinterface_quality_metrics_correlations(metrics_file: Union[str, l
         y_qm_name = keylist[y_idx]
         y_data = all_data[y_qm_name]
 
-        subplot.scatter(
-            x=x_data,
-            y=y_data,
-            s=1
+        graph_data.add_func(
+            "scatter",
+            {"x": x_data, "y": y_data, "s": 1}
         )
+
         if x_idx == 0:
-            subplot.set_ylabel(y_qm_name, rotation="horizontal", ha="right")
-            # subplot.set(ylabel=y_qm_name)
+            graph_data.add_func("set_ylabel", {"ylabel": y_qm_name, "rotation": "horizontal", "ha": "right"})
         if y_idx == len(keylist) - 1:
-            subplot.set_xlabel(x_qm_name, rotation=90)
-            # subplot.set(xlabel=x_qm_name)
+            graph_data.add_func("set_xlabel", {"xlabel": x_qm_name, "rotation": 90})
 
         if y_idx != len(keylist) - 1:
-            subplot.set_xticks([])
+            graph_data.add_func("set_xticks", {"ticks": []})
         if x_idx != 0:
-            subplot.set_yticks([])
-
-        # print(f"Plotting {x_qm_name}({min(x_data)}, {max(x_data)}) vs {y_qm_name}({min(y_data)}, {max(y_data)})")
+            graph_data.add_func("set_yticks", {"ticks": []})
+        return graph_data
 
     progress = []
     for row in range(qm_count):
         for col in range(qm_count):
-            progress.append((row, col))
+            progress.append((col, row))
+
+    return [raw_subplot(*v) for v in progress]
+
+
+def graph_quality_metrics_correlations(metrics_file: Union[str, list[str]], save_folder=Optional[str],
+                                       use_common_units: bool = False, save_prefix: str = ""):
+    """
+    Plot each metric value against each other to determine how they correlate
+
+    :param metrics_file: string filename to read from
+    :param save_folder: If set, will save the graph in the folder of the string value given, else False will only show plots
+    :param use_common_units: If true, will only use units that match up for each metric. (Sometimes certain metrics exclude units)
+    :param save_prefix: prefix to put in front of the saved file, not the same as the directory
+    :return: None
+    """
+    graphing_data = raw_quality_metrics_correlations(metrics_file, use_common_units)
+    qm_count = len(graphing_data)
+
+    progress = []
+    for row in range(qm_count):
+        for col in range(qm_count):
+            progress.append((col, row))
 
     fig, axes = plt.subplots(
         nrows=qm_count,
         ncols=qm_count
-        # sharex="all",
-        # sharey="all",
-        # layout="constrained"
     )
+
     fig.suptitle(f"{save_prefix}Values of QMs against each other")
     fig.set_size_inches(15, 15)
-    [plot_subplot(axes, *v) for v in progress]
+
+    for graph_data in graphing_data:
+        x_idx = graph_data.get_value("x_idx")
+        y_idx = graph_data.get_value("y_idx")
+        Grapher(graph_data, axes[x_idx, y_idx]).run()
+
     if save_folder:
         plt.tight_layout()
         plt.savefig(f"{save_folder}/{save_prefix}correlations.png")
         plt.clf()
     else:
         plt.show()
-    tw = 2
 
 
-def graph_spikeinterface_quality_metrics(metrics_file: Union[str, list[str]], save_folder: Union[bool, str] = False,
-                                         use_common_units: bool = False, save_prefix: Optional[str] = ""):
+def graph_quality_metrics(metrics_file: Union[str, list[str]], save_folder: Union[bool, str] = False,
+                          use_common_units: bool = False, save_prefix: Optional[str] = ""):
+    """
+    Plot all basic quality metrics
+    - Unit Graph
+    - Probability Distributions
+    - Metric Correlations
+
+    :param metrics_file: string filename to read from
+    :param save_folder: If set, will save the graph in the folder of the string value given, else False will only show plots
+    :param use_common_units: If true, will only use units that match up for each metric. (Sometimes certain metrics exclude units)
+    :param save_prefix: prefix to put in front of the saved file, not the same as the directory
+    :return: None
+    """
+
     print(f"Graphing '{metrics_file}'")
     if save_folder:
         if not isinstance(save_folder, str):
@@ -350,18 +368,19 @@ def graph_spikeinterface_quality_metrics(metrics_file: Union[str, list[str]], sa
 
     # Unit vs qm value
     print("Graphing Units vs Quality Metric Value")
-    graph_spikeinterface_quality_metrics_unit_graphs(metrics_file, save_folder=save_folder,
+    graph_quality_metrics_unit_graphs(metrics_file, save_folder=save_folder,
                                                      use_common_units=use_common_units, save_prefix=save_prefix)
 
     # Probability distribution of the quality metrics values across all units
     print("Graphing Probability Dist of Quality Metric Values")
-    graph_spikeinterface_quality_metrics_prob_dists(metrics_file, save_folder=save_folder,
+    graph_quality_metrics_prob_dists(metrics_file, save_folder=save_folder,
                                                     use_common_units=use_common_units, save_prefix=save_prefix)
 
     # All quality metrics plotted against another to determine correlations
     print("Graphing Quality Metric v Metric values")
-    graph_spikeinterface_quality_metrics_correlations(metrics_file, save_folder=save_folder,
+    graph_quality_metrics_correlations(metrics_file, save_folder=save_folder,
                                                       use_common_units=use_common_units, save_prefix=save_prefix)
 
-    print(f"Done graphing\n--")
-    tw = 2
+    print(f"Done graphing")
+    print("--")
+

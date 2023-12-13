@@ -8,9 +8,9 @@ MATLAB_SCRIPT = """
 %% ~~ Example bombcell pipeline ~~
 % Adjust the paths in the 'set paths' section and the parameters in bc_qualityParamValues
 % This pipeline will:
-%   (1) load your ephys data, 
-%   (2) decompress your raw data if it is in .cbin format 
-%   (3) run bombcell on your data and save the output and
+%   (1) load your ephys metric_data, 
+%   (2) decompress your raw metric_data if it is in .cbin format 
+%   (3) run bombcell on your metric_data and save the output and
 %   (4) bring up summary plots and a GUI to flip through classified cells.
 % The first time, this pipeline will be significantly slower (10-20' more)
 % than after because it extracts raw waveforms. Subsequent times these
@@ -20,12 +20,12 @@ MATLAB_SCRIPT = """
 % of the distributions of quality metrics for each unit) and GUI. 
 
 ephysKilosortPath = '{kilosort_directory}';% path to your kilosort output files 
-ephysRawDir = dir('{raw_data_directory}'); % path to your raw .bin or .dat data
+ephysRawDir = dir('{raw_data_directory}'); % path to your raw .bin or .dat metric_data
 ephysMetaDir = dir('{metadata_directory}'); % path to your .meta or .oebin meta file
 savePath = '{bombcell_save_directory}'; % where you want to save the quality metrics 
-decompressDataLocal = '{decompress_directory}'; % where to save raw decompressed ephys data 
+decompressDataLocal = '{decompress_directory}'; % where to save raw decompressed ephys metric_data 
 
-gain_to_uV = {gain_to_uv}; % use this if you are not using spikeGLX or openEphys to record your data. You then must leave the ephysMetaDir 
+gain_to_uV = {gain_to_uv}; % use this if you are not using spikeGLX or openEphys to record your metric_data. You then must leave the ephysMetaDir 
     % empty(e.g. ephysMetaDir = '')
 
 %% check MATLAB version 
@@ -34,11 +34,11 @@ if oldMATLAB
     error('This MATLAB version is older than 2019a - download a more recent version before continuing')
 end
 
-%% load data 
+%% load metric_data 
 [spikeTimes_samples, spikeTemplates, templateWaveforms, templateAmplitudes, pcFeatures, ...
     pcFeatureIdx, channelPositions] = bc_loadEphysData(ephysKilosortPath);
 
-%% detect whether data is compressed, decompress locally if necessary
+%% detect whether metric_data is compressed, decompress locally if necessary
 rawFile = bc_manageDataCompression(ephysRawDir, decompressDataLocal);
 
 %% which quality metric parameters to extract and thresholds 

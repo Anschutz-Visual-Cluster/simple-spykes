@@ -1,10 +1,12 @@
+import os
 from simple_spykes.metric_packages.ecephys_metrics import ecephys_run_quality_metrics
 
 
-def test_ecephys():
+def ecephys_testing():
+    os.chdir("metric_data")
     result = ecephys_run_quality_metrics(
         # Path to the output of kilosort, folder containing continuous.dat
-        "E:\\NeuroPixelsTest\\continuous\\Neuropix-PXI-104.ProbeA-AP",
+        "..\\..\\data\\Record Node 105\\experiment1\\recording1\\continuous\\Neuropix-PXI-104.ProbeA-AP",
         # float (optional) AP band sample rate in Hz, defaults to 30000
         30000.0,
         {
