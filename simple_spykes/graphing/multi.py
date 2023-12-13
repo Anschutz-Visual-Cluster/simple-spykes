@@ -1,11 +1,10 @@
 import time
 from typing import Union, Optional, Callable
 
-from simple_spykes.graphing.raw import raw_quality_metrics_prob_dists, raw_calc_metric_prob_dist
+from simple_spykes.graphing.raw import raw_calc_metric_prob_dist
 from simple_spykes.graphing.util.graphdata import RawGraphData
 from simple_spykes.graphing.util.grapher import Grapher
 import matplotlib.pyplot as plt
-from matplotlib import colormaps
 from simple_spykes.graphing.util.io import load_file
 
 
@@ -13,7 +12,6 @@ def load_multi_data(metric_files_list: list[list[str]], exclude: list[str] = lis
     all_loaded_data = []
     qm_count = None
     qm_names = None
-    common_units = None
 
     # Load files
     for metric_files in metric_files_list:
@@ -139,13 +137,11 @@ def graph_multi_graph(metric_files_list: list[list[str]],
     # Plot and show the graphs
     for g in final_graphs:
         g.legend()
-
         if save_folder:
             g.savefig(f"{save_folder}/{save_prefix}multiprob-{g.get_value('qm_name')}.png")
             g.clf()
         else:
             g.show()
-
         Grapher(g, plt).run()
 
 

@@ -140,4 +140,3 @@ def graph_basic_quality_metrics(metrics_file: Union[str, list[str]], save_folder
 
     print(f"Done graphing")
     print("--")
-
