@@ -1,5 +1,4 @@
-from simple_spykes.graphing.raw_graphdata import RawGraphData
-import matplotlib.pyplot as plt
+from simple_spykes.graphing.util.graphdata import RawGraphData, RawGraphVariable
 
 
 class Grapher(object):
@@ -7,12 +6,16 @@ class Grapher(object):
         self.graph_data = graph_data
         self.plotter = plotter
 
+    def __str__(self):
+        return f"Grapher({self.graph_data}, {self.plotter})"
+
     def _run_part(self, part: dict):
         func_name = part["$func"]
         args = part["$args"]
         kwargs = part["$kwargs"]
 
         tb = part["$traceback"]
+
         try:
             getattr(self.plotter, func_name)(*args, **kwargs)
         except Exception as e:
@@ -23,6 +26,8 @@ class Grapher(object):
             tw = 2
 
     def run(self):
+        self.graph_data.replace_vars()
+
         for part in self.graph_data.funcs:
             self._run_part(part)
         return self
