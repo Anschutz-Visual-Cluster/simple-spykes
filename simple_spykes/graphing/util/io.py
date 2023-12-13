@@ -1,3 +1,4 @@
+import warnings
 from typing import Union, Optional
 import numpy as np
 import json
@@ -6,6 +7,8 @@ import json
 def load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] = None,
               use_common_units: bool = False) -> dict:
     """
+    Load metric file(s) for use in graphing
+
     :param metrics_file: string filename to read from
     :param use_common_units: If true, will only use units that match up for each metric. (Sometimes certain metrics exclude units)
     :param exclude: List of string values from the qm file to exclude from loading
@@ -25,14 +28,6 @@ def load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] 
         [loaddata.pop(ex, None) for ex in exclude]
         data.update(loaddata)
 
-    # Normalize broken rn
-    # if normalize:
-    #     d2 = {}
-    #     for k, v in metric_data.items():
-    #         d2[k] = {c: sklearn.preprocessing.normalize([list(v.values())]) for c in range(len(v.keys()))}
-    #         tw = 2
-    #     metric_data = d2
-    #
     if not use_common_units:
         # Check that the metric_data of QMs have the same length, unless using common units then ignore
         val_len = None
@@ -43,8 +38,6 @@ def load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] 
                 key_used_for_len = k
             if len(v) != val_len:
                 raise ValueError(f"Error, length of QM '{k}' isn't the same size as '{key_used_for_len}'")
-
-    new_data = {}
 
     # Ensure common units align with each other
     all_set = None
@@ -69,8 +62,8 @@ def load_file(metrics_file: Union[str, list[str]], exclude: Optional[list[str]] 
         for unit in ordered_units:
             to_add.append(data[key][str(unit)])
         to_add = np.array(to_add)
-        if np.all(to_add == None) or np.all(to_add == 0):
-            print(f"All values of metric '{key}' are None or 0! Excluding from graphing metric_data")
+        if np.all(to_add == None) or np.all(to_add == 0) or np.all(to_add == to_add[0]):
+            warnings.warn(f"All values of metric '{key}' are None, 0 or all the same! Excluding from graphing metric_data")
         else:
             new_data[key] = to_add
     return new_data

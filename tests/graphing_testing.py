@@ -20,17 +20,19 @@ def graphing_testing():
     #     ["..\\..\\scripts\\bombcell-2023-04-12-curated.json"]
     # ])
 
+    do_save = True
+
     graph_multi_prob_dists(
         [glob.glob("..\\..\\scripts\\*-raw.json"), glob.glob("..\\..\\scripts\\*-curated.json")],
         labels=["Raw", "Curated"],
         save_folder="graphs/",
-        save_prefix="bombcell-compare-"
+        save_prefix="bombcell-"
     )
 
-    # graphing("spikeinterface_quality_metrics.json", "spikeinterface-", do_save)
-    # graphing("spikeinterface_pc_quality_metrics.json", "spikeinterface-pc-", do_save)
-    # graphing(["spikeinterface_quality_metrics.json", "spikeinterface_pc_quality_metrics.json"], "spikeinterface-all-", do_save)
-    # graphing("bombcell_metrics.json", "bombcell-", do_save)
+    graphing("spikeinterface_quality_metrics.json", "spikeinterface-", do_save)
+    graphing("spikeinterface_pc_quality_metrics.json", "spikeinterface-pc-", do_save)
+    graphing(["spikeinterface_quality_metrics.json", "spikeinterface_pc_quality_metrics.json"], "spikeinterface-all-", do_save)
+    graphing("bombcell_metrics.json", "bombcell-", do_save)
     tw = 2
 
 

@@ -141,7 +141,7 @@ def graph_multi_graph(metric_files_list: list[list[str]],
         g.legend()
 
         if save_folder:
-            g.savefig(f"{save_folder}/{save_prefix}prob-{g.get_value('qm_name')}.png")
+            g.savefig(f"{save_folder}/{save_prefix}multiprob-{g.get_value('qm_name')}.png")
             g.clf()
         else:
             g.show()
