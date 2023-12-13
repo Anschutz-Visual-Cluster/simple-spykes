@@ -13,7 +13,7 @@ def graphing(metrics_file, save_prefix, do_save):
 def graphing_testing():
     os.chdir("metric_data")
 
-    do_save = True
+    do_save = False
 
     graphing("spikeinterface_quality_metrics.json", "spikeinterface-", do_save)
     graphing("spikeinterface_pc_quality_metrics.json", "spikeinterface-pc-", do_save)
