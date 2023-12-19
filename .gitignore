@@ -7,4 +7,5 @@ dist/
 build/
 temp/
 tests/*Waveforms
+mass_graphs/
 *pathdef.m
